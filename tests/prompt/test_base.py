@@ -4,13 +4,13 @@ from annomatic.prompt.base import FstringTemplater
 
 def test_fstring_template_no_variable():
     template = FstringTemplater("This template is empty.")
-    result = template.to_string()
+    result = template.parse()
     assert result == "This template is empty."
 
 
 def test_fstring_template():
     template = FstringTemplater("This template is a {purpose}.")
-    result = template.to_string(purpose="test")
+    result = template.parse(purpose="test")
     assert result == "This template is a test."
 
 
@@ -19,10 +19,10 @@ def test_fstring_template_multiple_variables():
         "Hello {person}. This is the {speaker} speaking."
         " We have some time till {answer} is known.",
     )
-    result = template.to_string(person="Traveler", speaker="me", answer=42)
+    result = template.parse(person="Traveler", speaker="me", answer=42)
     assert (
-            result == "Hello Traveler. This is the me speaking."
-                      " We have some time till 42 is known."
+        result == "Hello Traveler. This is the me speaking."
+        " We have some time till 42 is known."
     )
 
 
@@ -32,7 +32,17 @@ def test_fstring_template_missing_variables():
         " We have some time till {answer} is known.",
     )
     with pytest.raises(ValueError, match="Missing variable: answer"):
-        template.to_string(person="Traveler", speaker="me")
+        template.parse(person="Traveler", speaker="me")
+
+
+def test_fstring_get_variables():
+    template = FstringTemplater(
+        "Hello {person}. This is the {speaker} speaking."
+        " We have some time till {answer} is known.",
+    )
+    result = template.get_variables()
+
+    assert result == ["person", "speaker", "answer"]
 
 
 if __name__ == "__main__":
