@@ -3,6 +3,8 @@ from typing import Optional, List, Any
 from annomatic.model.base import Model, Response
 import logging
 
+from annomatic.model.openai.utils import build_message, _build_response
+
 LOGGER = logging.getLogger(__name__)
 
 try:
@@ -27,33 +29,12 @@ def valid_model(model: str) -> str:
     return model
 
 
-def build_message(content: str, role: str = "user"):
-    """
-    Build a structured message.
-
-    This function creates the message in the format specified in the
-    Chat Completions API provided by OpenAI.
-    https://platform.openai.com/docs/guides/gpt/chat-completions-api
-
-    The format is a dict containing a "role", usually "user" or "system",
-    and the "content" which is the prompt message
-
-    Arguments:
-        content: content of the prompt.
-        role : The role of the message sender/owner. default="user"
-
-    Returns:
-        dict: A dictionary representing a message
-    """
-    return {"role": role, "content": content}
-
-
 class OpenAiModel(Model):
     def __init__(
-        self,
-        api_key: str = "",
-        model: str = "gpt-3.5-turbo",
-        temperature=1.0,
+            self,
+            api_key: str = "",
+            model: str = "gpt-3.5-turbo",
+            temperature=1.0,
     ):
         """
         Initialize the OpenAI model.
@@ -98,7 +79,7 @@ class OpenAiModel(Model):
         if isinstance(content, str):
             return self._predict_single(content)
         elif isinstance(content, list) and all(
-            isinstance(item, str) for item in content
+                isinstance(item, str) for item in content
         ):
             return self._predict_list(content)
         else:
@@ -126,7 +107,8 @@ class OpenAiModel(Model):
             )
 
         messages = self.build_messages(content)
-        return self._call_chat_completions_api(messages=messages)
+        api_response = self._call_chat_completions_api(messages=messages)
+        return _build_response(api_response)
 
     def _predict_single(self, content: str) -> Response:
         """
@@ -141,10 +123,12 @@ class OpenAiModel(Model):
         """
         if self._model in COMPLETION_ONLY:
             LOGGER.info("Legacy API used!")
-            return self._call_completion_api(prompt=content)
+            api_response = self._call_completion_api(prompt=content)
+            return _build_response(api_response)
 
         messages = self.build_messages([content])
-        return self._call_chat_completions_api(messages=messages)
+        api_response = self._call_chat_completions_api(messages=messages)
+        return _build_response(api_response)
 
     def _call_completion_api(self, prompt: str):
         """
@@ -173,7 +157,7 @@ class OpenAiModel(Model):
 
 
         Args:
-            prompt: List of string representation of the given Prompts
+            messages: List of string representation of the given Prompts
 
         Returns:
             The Completion object produced by the OpenAI Model
