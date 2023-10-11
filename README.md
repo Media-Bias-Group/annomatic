@@ -11,7 +11,11 @@
 
 ## Introduction
 
-Annomatic is a powerful framework for automating the process of text annotation using Language Models (LLMs). This tool simplifies and streamlines the pipeline for annotating text data with the help of state-of-the-art language models, making it easier for researchers and developers to leverage the power of LLMs for their projects.
+Annomatic is a powerful framework for automating the process of text annotation
+using Language Models (LLMs). This tool simplifies and streamlines the pipeline
+for annotating text data with the help of state-of-the-art language models,
+making it easier for researchers and developers to leverage the power of LLMs
+for their projects.
 
 ## Features
 
@@ -31,9 +35,21 @@ To get started with Annomatic, follow these installation steps:
    git clone https://github.com/mandlc/annomatic.git
 
 2. Install dependencies
+
+   The installation depends on what Language Models you choose:
+
+   1. OpenAI
     ```bash
-    poetry install
+    poetry install --with openai
+    ```
+
+   2. HuggingFace
+    ```bash
+    poetry install --with huggingface
+    ```
 
 ## Usage
+
 ## Contributing
+
 ## Lincense

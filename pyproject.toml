@@ -13,11 +13,19 @@ python = "^3.11"
 pytest = "^7.4.2"
 pre-commit = "^3.4.0"
 
+# OpenAi
+[tool.poetry.group.openai]
+optional = true
+
+[tool.poetry.group.openai.dependencies]
+openai = "^0.28.1"
+
+# config for pre-commit
 [tool.black]
 line-length = 79
 
 [tool.flake8]
-exclude = [".git", "__pycache__", "*tests"]
+exclude = [".git", "__pycache__", "*tests/*"]
 max-complexity = 10
 
 
