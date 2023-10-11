@@ -2,7 +2,53 @@ from typing import List
 
 import pytest
 
-from annomatic.model.openai.openai import OpenAiModel, build_message
+from annomatic.model.base import Response
+from annomatic.model.openai.open_ai import OpenAiModel
+from annomatic.model.openai.utils import build_message
+
+TEST_RESPONSE_CHAT = {
+    "choices": [
+        {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+                "content": "The 2020 World Series was played in "
+                           "Texas at Globe Life Field in Arlington.",
+                "role": "assistant",
+            },
+        },
+    ],
+    "created": 1677664795,
+    "id": "chatcmpl-7QyqpwdfhqwajicIEznoc6Q47XAyW",
+    "model": "gpt-3.5-turbo-0613",
+    "object": "chat.completion",
+    "usage": {
+        "completion_tokens": 17,
+        "prompt_tokens": 57,
+        "total_tokens": 74,
+    },
+}
+
+TEST_RESPONSE_LEGACY = {
+    "choices": [
+        {
+            "finish_reason": "length",
+            "index": 0,
+            "logprobs": "null",
+            "text": '\n\n"Let Your Sweet Tooth Run Wild at Our '
+                    "Creamy Ice Cream Shack",
+        },
+    ],
+    "created": 1683130927,
+    "id": "cmpl-7C9Wxi9Du4j1lQjdjhxBlO22M61LD",
+    "model": "gpt-3.5-turbo-instruct",
+    "object": "text_completion",
+    "usage": {
+        "completion_tokens": 16,
+        "prompt_tokens": 10,
+        "total_tokens": 26,
+    },
+}
 
 
 class FakeOpenAiModel(OpenAiModel):
@@ -23,26 +69,7 @@ class FakeOpenAiModel(OpenAiModel):
         Returns a tuple of the (input, output) for testing
         """
 
-        result = {
-            "choices": [
-                {
-                    "finish_reason": "length",
-                    "index": 0,
-                    "logprobs": "null",
-                    "text": '\n\n"Let Your Sweet Tooth Run Wild at Our '
-                    "Creamy Ice Cream Shack",
-                },
-            ],
-            "created": 1683130927,
-            "id": "cmpl-7C9Wxi9Du4j1lQjdjhxBlO22M61LD",
-            "model": "gpt-3.5-turbo-instruct",
-            "object": "text_completion",
-            "usage": {
-                "completion_tokens": 16,
-                "prompt_tokens": 10,
-                "total_tokens": 26,
-            },
-        }
+        result = TEST_RESPONSE_LEGACY
 
         return result
 
@@ -56,28 +83,7 @@ class FakeOpenAiModel(OpenAiModel):
         Returns a tuple of the (input, output) for testing
         """
 
-        response = {
-            "choices": [
-                {
-                    "finish_reason": "stop",
-                    "index": 0,
-                    "message": {
-                        "content": "The 2020 World Series was played in "
-                        "Texas at Globe Life Field in Arlington.",
-                        "role": "assistant",
-                    },
-                },
-            ],
-            "created": 1677664795,
-            "id": "chatcmpl-7QyqpwdfhqwajicIEznoc6Q47XAyW",
-            "model": "gpt-3.5-turbo-0613",
-            "object": "chat.completion",
-            "usage": {
-                "completion_tokens": 17,
-                "prompt_tokens": 57,
-                "total_tokens": 74,
-            },
-        }
+        response = TEST_RESPONSE_CHAT
 
         return response
 
@@ -117,3 +123,23 @@ def test_predict_invalid_type():
 
     with pytest.raises(NotImplementedError):
         model.predict(inp)
+
+
+def test_build_response_chat_single():
+    model = FakeOpenAiModel()
+
+    res = model.predict("This is a nice prompt")
+
+    assert isinstance(res, Response) \
+           and res.answer == "The 2020 World Series was played in " \
+                             "Texas at Globe Life Field in Arlington." \
+           and res._data == TEST_RESPONSE_CHAT
+
+
+def test_build_response_legacy():
+    model = FakeOpenAiModel(model="gpt-3.5-turbo-instruct")
+    res = model.predict("This is a nice prompt")
+    assert isinstance(res, Response) \
+           and res.answer == '\n\n"Let Your Sweet Tooth Run Wild at Our ' \
+                             "Creamy Ice Cream Shack" \
+           and res._data == TEST_RESPONSE_LEGACY
