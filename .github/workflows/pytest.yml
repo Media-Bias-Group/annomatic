@@ -10,20 +10,20 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.11.0"
-    - name: Use Python with Poetry
-      uses: abatilo/actions-poetry@v2
-      with:
-        python-version: "3.11.0"
-    - name: Install dependencies
-      run: poetry install --with dev
-    - name: Test with pytest
-      run: poetry run pytest
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9.16"
+      - name: Use Python with Poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          python-version: "3.9.16"
+      - name: Install dependencies
+        run: poetry install --with dev
+      - name: Install openAI dependencies
+        run: poetry install --with openai
+      - name: Test with pytest
+        run: poetry run pytest
