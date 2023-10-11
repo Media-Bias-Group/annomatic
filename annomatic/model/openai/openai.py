@@ -7,7 +7,6 @@ LOGGER = logging.getLogger(__name__)
 
 try:
     import openai
-
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with openai" before using this model!',
@@ -52,7 +51,7 @@ def build_message(content: str, role: str = "user"):
 class OpenAiModel(Model):
     def __init__(
         self,
-        api_key: str | None = None,
+        api_key: str = "",
         model: str = "gpt-3.5-turbo",
         temperature=1.0,
     ):
@@ -74,7 +73,7 @@ class OpenAiModel(Model):
 
         self.system_prompt: Optional[str] = None
 
-        if api_key is None:
+        if api_key == "":
             raise ValueError("No OPEN AI key given!")
 
         openai.api_key = api_key
