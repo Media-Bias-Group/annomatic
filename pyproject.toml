@@ -27,6 +27,10 @@ line-length = 79
 exclude = [".git", "__pycache__", "*tests/*"]
 max-complexity = 10
 
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+py_version = 27
 
 [build-system]
 requires = ["poetry-core"]
