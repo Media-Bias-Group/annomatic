@@ -1,9 +1,9 @@
-from typing import Optional, List, Any
-
-from annomatic.model.base import Model, Response
 import logging
 
-from annomatic.model.openai.utils import build_message, _build_response
+from typing import Any, List, Optional
+
+from annomatic.model.base import Model, Response
+from annomatic.model.openai.utils import _build_response, build_message
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,10 +31,10 @@ def valid_model(model: str) -> str:
 
 class OpenAiModel(Model):
     def __init__(
-            self,
-            api_key: str = "",
-            model: str = "gpt-3.5-turbo",
-            temperature=1.0,
+        self,
+        api_key: str = "",
+        model: str = "gpt-3.5-turbo",
+        temperature=0.0,
     ):
         """
         Initialize the OpenAI model.
@@ -44,7 +44,7 @@ class OpenAiModel(Model):
             model: string representing the selected model.
                 (Default="gpt-3.5-turbo")
             temperature: The temperature parameter for text generation.
-                (Default =1.0)
+                (Default=0.0)
 
         Raises:
             ValueError: If no API key is provided.
@@ -79,7 +79,7 @@ class OpenAiModel(Model):
         if isinstance(content, str):
             return self._predict_single(content)
         elif isinstance(content, list) and all(
-                isinstance(item, str) for item in content
+            isinstance(item, str) for item in content
         ):
             return self._predict_list(content)
         else:
