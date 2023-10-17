@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import List, Any
+
+from typing import Any, List
 
 from annomatic.prompt.segment import (
-    PromptTemplateSegment,
-    PromptSegment,
+    LabelTemplateSegment,
     PromptPlainSegment,
+    PromptSegment,
+    PromptTemplateSegment,
 )
 from annomatic.prompt.utils import check_template_format
 
@@ -56,7 +58,7 @@ class Prompt(BasePrompt):
     def __init__(self, content: str = ""):
         super().__init__()
         self._variables: List[str] = []
-        self.add_Part(content)
+        self.add_part(content)
 
     def get_variables(self) -> List[str]:
         """
@@ -71,7 +73,7 @@ class Prompt(BasePrompt):
             for var in segment.get_variables()
         ]
 
-    def add_Part(self, content: str = ""):
+    def add_part(self, content: str = ""):
         """
         Adds the given new content as a new part of the Prompt.
 
@@ -83,6 +85,22 @@ class Prompt(BasePrompt):
         if content == "":
             return
         if check_template_format(content):
-            self._segments.append(PromptTemplateSegment(content=content))
+            self._segments.append(PromptTemplateSegment(template=content))
+        else:
+            self._segments.append(PromptPlainSegment(content=content))
+
+    def add_labels_part(self, content: str = ""):
+        """
+        Adds the given new content as a new part of the Prompt.
+
+        The content will by default be added on the rear of the prompt.
+
+        Args:
+            string containing the prompt
+        """
+        if content == "":
+            return
+        if check_template_format(content):
+            self._segments.append(LabelTemplateSegment(template=content))
         else:
             self._segments.append(PromptPlainSegment(content=content))
