@@ -20,6 +20,14 @@ optional = true
 [tool.poetry.group.openai.dependencies]
 openai = "^0.28.1"
 
+# HugginFace
+[tool.poetry.group.huggingface]
+optional = true
+
+[tool.poetry.group.huggingface.dependencies]
+transformers = "^4.34.0"
+torch = "^2.1.0"
+
 # config for pre-commit
 [tool.black]
 line-length = 79
@@ -27,6 +35,8 @@ line-length = 79
 [tool.flake8]
 exclude = [".git", "__pycache__", "*tests/*"]
 max-complexity = 10
+extend-ignore = 'E203'
+
 
 [tool.isort]
 profile = "black"
