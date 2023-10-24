@@ -1,7 +1,7 @@
 import pytest
 
-from annomatic.model.base import Response
-from annomatic.model.openai.utils import build_message
+from annomatic.llm.base import Response
+from annomatic.llm.openai.utils import build_message
 from tests.model.mock import (
     TEST_OPEN_AI_RESPONSE_CHAT,
     TEST_OPEN_AI_RESPONSE_LEGACY,

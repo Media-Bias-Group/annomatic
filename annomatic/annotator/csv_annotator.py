@@ -5,10 +5,10 @@ import pandas as pd
 from typing import Optional
 
 from annomatic.annotator.base import BaseAnnotator
-from annomatic.io.file import CsvInput, CsvOutput
-from annomatic.model.base import Response
-from annomatic.model.openai.open_ai import OpenAiModel
-from annomatic.prompt.prompt import Prompt
+from annomatic.io import CsvInput, CsvOutput
+from annomatic.llm import Response
+from annomatic.llm.openai import OpenAiModel
+from annomatic.prompt import Prompt
 
 LOGGER = logging.getLogger(__name__)
 

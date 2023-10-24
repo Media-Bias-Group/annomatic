@@ -1,4 +1,4 @@
-from annomatic.model.base import Response
+from annomatic.llm.base import Response
 import logging
 
 LOGGER = logging.getLogger(__name__)

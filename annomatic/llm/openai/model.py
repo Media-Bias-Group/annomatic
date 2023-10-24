@@ -2,8 +2,8 @@ import logging
 
 from typing import Any, List, Optional
 
-from annomatic.model.base import Model, Response
-from annomatic.model.openai.utils import _build_response, build_message
+from annomatic.llm.base import Model, Response
+from annomatic.llm.openai.utils import _build_response, build_message
 
 LOGGER = logging.getLogger(__name__)
 

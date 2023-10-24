@@ -1,6 +1,6 @@
 from typing import List
 
-from annomatic.model.openai.open_ai import OpenAiModel
+from annomatic.llm.openai.model import OpenAiModel
 
 TEST_OPEN_AI_RESPONSE_CHAT = {
     "choices": [
