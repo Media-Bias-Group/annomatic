@@ -1,8 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
 
-LOGGER = logging.getLogger(__name__)
-
 
 class BaseAnnotator(ABC):
     """

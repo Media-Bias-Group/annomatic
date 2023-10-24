@@ -2,7 +2,7 @@ from abc import ABC
 
 from typing import List
 
-from annomatic.model.base import ResponseList
+from annomatic.llm import ResponseList
 
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
