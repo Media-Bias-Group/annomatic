@@ -32,12 +32,6 @@ torch = "^2.1.0"
 [tool.black]
 line-length = 79
 
-[tool.flake8]
-exclude = [".git", "__pycache__", "*tests/*"]
-max-complexity = 10
-extend-ignore = 'E203'
-
-
 [tool.isort]
 profile = "black"
 multi_line_output = 3
