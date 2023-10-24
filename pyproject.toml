@@ -6,7 +6,7 @@ authors = ["Christoph Mandl <mandl23@ads.uni-passau.de>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<=3.10"
+python = ">=3.9,<3.11"
 pandas = "^2.1.1"
 
 [tool.poetry.group.dev.dependencies]
