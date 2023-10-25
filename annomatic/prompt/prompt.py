@@ -23,13 +23,35 @@ class BasePrompt(ABC):
     def __init__(self):
         self._segments: List[PromptSegment] = []
 
+    def __str__(self):
+        """
+        Concatenates the string representations of the segment and returns them
+        without variables.
+        """
+        return self.to_string()
+
+    def __call__(self, **kwargs: Any) -> str:
+        """
+        Concatenates the string representations of the segment and returns them
+        with variables in kwargs.
+
+        Calls the to_string method with the given kwargs.
+
+        Args:
+            kwargs: a dict containing the input variables for templates
+        Returns:
+            string representation of the prompt
+        """
+        return self.to_string(**kwargs)
+
     def to_string(
         self,
         separator: str = DEFAULT_SEPARATOR,
         **kwargs: Any,
     ) -> str:
         """
-        Concatenates the string representations of the strings and returns them
+        Concatenates the string representations of the segment and returns them
+        with variables in kwargs.
 
         Args:
             separator: The separator to include between segments.

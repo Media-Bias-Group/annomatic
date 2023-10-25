@@ -55,16 +55,16 @@ def test_build_response_chat_single():
         isinstance(res, Response)
         and res.answer == "The 2020 World Series was played in "
         "Texas at Globe Life Field in Arlington."
-        and res._data == TEST_OPEN_AI_RESPONSE_CHAT
+        and res.data == TEST_OPEN_AI_RESPONSE_CHAT
     )
 
 
 def test_build_response_legacy():
-    model = FakeOpenAiModel(model="gpt-3.5-turbo-instruct")
+    model = FakeOpenAiModel(model_name="gpt-3.5-turbo-instruct")
     res = model.predict("This is a nice prompt")
     assert (
         isinstance(res, Response)
         and res.answer == '\n\n"Let Your Sweet Tooth Run Wild at Our '
         "Creamy Ice Cream Shack"
-        and res._data == TEST_OPEN_AI_RESPONSE_LEGACY
+        and res.data == TEST_OPEN_AI_RESPONSE_LEGACY
     )

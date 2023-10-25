@@ -1,8 +1,9 @@
 from abc import ABC
 
-from typing import List
+from typing import List, Union
 
 from annomatic.llm import ResponseList
+from annomatic.llm.base import Model
 
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -13,7 +14,7 @@ except ImportError as e:
     ) from None
 
 
-class HuggingFaceModel(ABC):
+class HuggingFaceModel(Model, ABC):
     """
     Base class for all HuggingFace models.
     """

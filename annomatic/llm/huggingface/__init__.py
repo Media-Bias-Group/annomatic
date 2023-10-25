@@ -1,1 +1,1 @@
-from model import HFAutoModelForCausalLM
+from .model import HFAutoModelForCausalLM
