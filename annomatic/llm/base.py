@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from typing import Any
+from typing import Any, Union
 
 
 class Response:
@@ -14,7 +14,7 @@ class Response:
 
     def __init__(self, answer: str, data: Any):
         self.answer = answer
-        self._data = data
+        self.data = data
 
     def __str__(self):
         return self.answer
@@ -65,7 +65,7 @@ class Model(ABC):
     """
 
     @abstractmethod
-    def predict(self, message):
+    def predict(self, messages) -> ResponseList:
         """
-        Predict the given message. Message can be of type str or List[str]
+        Predict the given messages. Message can be of type str or List[str]
         """

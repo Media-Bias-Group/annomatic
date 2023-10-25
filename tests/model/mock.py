@@ -52,8 +52,8 @@ class FakeOpenAiModel(OpenAiModel):
     Mock model of the OpenAI model
     """
 
-    def __init__(self, model="gpt-3.5-turbo"):
-        super().__init__(api_key="test_key", model=model)
+    def __init__(self, model_name="gpt-3.5-turbo"):
+        super().__init__(api_key="test_key", model_name=model_name)
 
     def _call_completion_api(self, prompt: str):
         """

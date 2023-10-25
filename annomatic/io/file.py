@@ -84,7 +84,8 @@ class CsvInput(BaseFileInput):
             LOGGER.error(
                 f"Error reading CSV file: {e}. Return Empty DataFrame",
             )
-            return pd.DataFrame()
+            # TODO own Exception
+            raise IOError(e)
 
 
 class CsvOutput(BaseFileOutput):
@@ -109,4 +110,5 @@ class CsvOutput(BaseFileOutput):
             df.to_csv(self._path, index=False)
             LOGGER.info(f"CSV file written to {self._path}")
         except Exception as e:
+            # TODO own Exception
             LOGGER.error(f"Error writing CSV file: {e}")

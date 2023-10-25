@@ -16,3 +16,10 @@ class BaseAnnotator(ABC):
             kwargs: a dict containing the input variables for prompt templates
         """
         raise NotImplementedError()
+
+    @abstractmethod
+    def _load_model(self):
+        pass
+
+
+# TODO add Mixin for Each LLM
