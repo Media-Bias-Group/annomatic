@@ -1,6 +1,6 @@
 from abc import ABC
 
-from typing import List, Union
+from typing import List
 
 from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
@@ -9,7 +9,9 @@ try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 except ImportError as e:
     raise ValueError(
-        'Install "poetry install --with huggingface" before using this model!',
+        'Install "poetry install --with huggingface" before using this model!'
+        "Alongside make sure that torch is installed. If not run"
+        '"pip install torch"',
         e,
     ) from None
 

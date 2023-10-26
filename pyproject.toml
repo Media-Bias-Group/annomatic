@@ -26,7 +26,6 @@ optional = true
 
 [tool.poetry.group.huggingface.dependencies]
 transformers = "^4.34.0"
-torch = "^2.1.0"
 
 # config for pre-commit
 [tool.black]
