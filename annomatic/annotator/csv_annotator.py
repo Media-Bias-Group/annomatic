@@ -1,13 +1,14 @@
 import logging
 
 import pandas as pd
+from enum import Enum
 from typing import Optional, Union
 
 from annomatic.annotator.base import BaseAnnotator
 from annomatic.io import CsvInput, CsvOutput
-from annomatic.llm import Response
 from annomatic.llm.base import Model, ResponseList
 from annomatic.llm.huggingface import HFAutoModelForCausalLM
+from annomatic.llm.huggingface.model import HFAutoModelForSeq2SeqLM
 from annomatic.llm.openai import OpenAiModel
 from annomatic.prompt import Prompt
 
@@ -51,6 +52,7 @@ class CsvAnnotator(BaseAnnotator):
         self.out_path = out_path
         self.to_kwargs = False
         self.kwargs = kwargs
+        self.batch_size = 1
 
         # store input as a dataframe
         self._input: Optional[pd.DataFrame] = None
@@ -181,17 +183,37 @@ class CsvAnnotator(BaseAnnotator):
             kwargs: a dict containing the input variables for templates
         """
         output_data = []
+        total_rows = self._input.shape[0]
+        LOGGER.info(f"Starting Annotation of {total_rows}")
 
         try:
-            # TODO chunk the iteration
-            for idx, row in self._input.iterrows():
-                entry = self._annotate_batch(row, **kwargs)
-                if entry:
-                    output_data.append(entry)
+            num_chunks = total_rows // self.batch_size
+            for idx in range(num_chunks):
+                batch = self._input.iloc[
+                    idx * self.batch_size : (idx + 1) * self.batch_size
+                ]
+                entries = self._annotate_batch(batch, **kwargs)
+                if entries:
+                    output_data.extend(entries)
+
+                LOGGER.info(
+                    f"Annotated...{(idx + 1) * self.batch_size} "
+                    f"out of {self._input.shape[0]}",
+                )
+
+            # handle remainder
+            if num_chunks * self.batch_size < total_rows:
+                batch = self._input.iloc[num_chunks * self.batch_size :]
+                entries = self._annotate_batch(batch, **kwargs)
+                if entries:
+                    output_data.extend(entries)
 
         except Exception as read_error:
             # Handle the input reading error
             LOGGER.error(f"Input reading error: {str(read_error)}")
+
+        LOGGER.info("Annotation done!")
+        LOGGER.info(f"Successfully annotated {len(output_data)} rows.")
 
         # Write the annotated data to the output CSV file
         try:
@@ -200,7 +222,7 @@ class CsvAnnotator(BaseAnnotator):
         except Exception as write_error:
             LOGGER.error(f"Output writing error: {str(write_error)}")
 
-    def _annotate_batch(self, row: pd.Series, **kwargs):
+    def _annotate_batch(self, batch: pd.DataFrame, **kwargs):
         """
         Annotates the input CSV file and writes the annotated data to the
         output CSV file.
@@ -217,21 +239,26 @@ class CsvAnnotator(BaseAnnotator):
                 "Please call set_data and set_prompt before annotate.",
             )
 
-        text_prompt = row[str(self.in_col)]
-        # extend kwargs with the current row
-        kwargs[str(self.in_col)] = text_prompt
-
-        # TODO add other rows to kwargs if needed
         try:
-            messages = [self._prompt(**kwargs)]
+            messages = []
+            for index, row in batch.iterrows():
+                kwargs[str(self.in_col)] = row[str(self.in_col)]
+                messages.append(self._prompt(**kwargs))
+
             responses: ResponseList = self.model.predict(messages=messages)
 
-            prediction: Response = responses[0]
-            return {
-                self.in_col: text_prompt,
-                "label": prediction.answer,
-                "raw_data": prediction.data,
-            }
+            annotated_data = []
+            for idx, response in enumerate(responses):
+                annotated_data.append(
+                    {
+                        self.in_col: batch.iloc[idx][str(self.in_col)],
+                        "label": response.answer,
+                        "raw_data": response.data,
+                        "query": response.query,
+                    },
+                )
+            return annotated_data
+
         except Exception as prediction_error:
             # TODO introduce a custom exception
             LOGGER.error(f"Prediction error: {str(prediction_error)}")
@@ -275,10 +302,17 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         return self.model
 
 
+class HFAutoModels(Enum):
+    AutoModelForCausalLM = "AutoModelForCausalLM"
+    AutoModelForSeq2SeqLM = "AutoModelForSeq2SeqLM"
+
+
 class HuggingFaceCsvAnnotator(CsvAnnotator):
     """
     Annotator class for OpenAI models that use CSV files as input and output.
     """
+
+    DEFAULT_BATCH_SIZE = 5
 
     def __init__(
         self,
@@ -286,12 +320,11 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         out_path: str,
         model_args: Optional[dict] = None,
         token_args: Optional[dict] = None,
+        auto_model: str = "AutoModelForCausalLM",
     ):
         """
         Arguments:
             model_name: str representing the Name of the OpenAI model.
-            api_key: str representing the OpenAI API key.
-            temperature: float value for Temperature for the model.
         """
         super().__init__(
             model_name=model_name,
@@ -304,10 +337,22 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         else:
             self.token_args = token_args
 
+        self.batch_size = HuggingFaceCsvAnnotator.DEFAULT_BATCH_SIZE
+        self.auto_model = auto_model
+
     def _load_model(self):
-        self.model = HFAutoModelForCausalLM(
-            model_name=self.model_name,
-            model_args=self.model_args,
-            token_args=self.token_args,
-        )
-        return self.model
+        if self.auto_model == "AutoModelForCausalLM":
+            self.model = HFAutoModelForCausalLM(
+                model_name=self.model_name,
+                model_args=self.model_args,
+                token_args=self.token_args,
+            )
+            return self.model
+
+        elif self.auto_model == "AutoModelForSeq2SeqLM":
+            self.model = HFAutoModelForSeq2SeqLM(
+                model_name=self.model_name,
+                model_args=self.model_args,
+                token_args=self.token_args,
+            )
+            return self.model

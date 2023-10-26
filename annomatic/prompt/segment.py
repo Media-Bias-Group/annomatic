@@ -105,7 +105,7 @@ class LabelTemplateSegment(PromptSegment):
     LAST_SEPARATOR = " or "
     """Separator between last two labels"""
 
-    def __init__(self, template: str, label_var: str = "labels"):
+    def __init__(self, template: str, label_var: str = "label"):
         self._template = FstringTemplater(template)
         self._label_var = label_var
 
