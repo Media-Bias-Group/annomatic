@@ -114,7 +114,7 @@ class Prompt(BasePrompt):
         else:
             self._segments.append(PromptPlainSegment(content=content))
 
-    def add_labels_part(self, content: str = ""):
+    def add_labels_part(self, content, label_var="label"):
         """
         Adds the given new content as a new part of the Prompt.
 
@@ -123,9 +123,10 @@ class Prompt(BasePrompt):
         Args:
             string containing the prompt
         """
-        if content == "":
-            return
         if check_template_format(content):
-            self._segments.append(LabelTemplateSegment(template=content))
+            # todo find var out of template
+            self._segments.append(
+                LabelTemplateSegment(template=content, label_var=label_var),
+            )
         else:
             self._segments.append(PromptPlainSegment(content=content))

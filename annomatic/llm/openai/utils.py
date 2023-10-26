@@ -1,5 +1,6 @@
-from annomatic.llm.base import Response
 import logging
+
+from annomatic.llm.base import Response
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,11 +41,11 @@ def _build_response(api_response: dict) -> Response:
     answer: str = ""
     data: dict = api_response
 
-    if api_response['object'] == "chat.completion":
-        answer = api_response['choices'][0]['message']['content']
-    elif api_response['object'] == "text_completion":
-        answer = api_response['choices'][0]['text']
+    if api_response["object"] == "chat.completion":
+        answer = api_response["choices"][0]["message"]["content"]
+    elif api_response["object"] == "text_completion":
+        answer = api_response["choices"][0]["text"]
     else:
         LOGGER.warning("unknown OpenAI response format: ")
 
-    return Response(answer=answer, data=data)
+    return Response(answer=answer, data=data, query="")

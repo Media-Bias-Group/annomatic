@@ -6,8 +6,7 @@ from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
 
 try:
-    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, \
-        AutoTokenizer
+    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with huggingface" before using this model!'
@@ -25,8 +24,7 @@ class HuggingFaceModel(Model, ABC):
     def __init__(self, model_name: str, token_args=None):
         if token_args is None:
             token_args = {}
-        if token_args is None:
-            token_args = {}
+
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
             **token_args,
@@ -84,11 +82,13 @@ class HuggingFaceModel(Model, ABC):
             skip_special_tokens=True,
         )
 
-        # TODO remove input if needed -> extract method
-        # remove the input from any response
+        # remove the input from any response (if needed)
         responses = self._format_output(decoded_output, messages)
-
-        return ResponseList(responses, decoded_output)
+        return ResponseList(
+            answers=responses,
+            data=decoded_output,
+            queries=messages,
+        )
 
 
 class HFAutoModelForCausalLM(HuggingFaceModel):
@@ -110,7 +110,10 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
         model_args=None,
         token_args=None,
     ):
-        super().__init__(model_name=model_name, token_args=token_args)
+        super().__init__(
+            model_name=model_name,
+            token_args=token_args,
+        )
 
         if model_args is None:
             model_args = {}
@@ -150,8 +153,10 @@ class HFAutoModelForSeq2SeqLM(HuggingFaceModel):
         model_args=None,
         token_args=None,
     ):
-        super().__init__(model_name=model_name, token_args=token_args)
-
+        super().__init__(
+            model_name=model_name,
+            token_args=token_args,
+        )
         if model_args is None:
             model_args = {}
 
