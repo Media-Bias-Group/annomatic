@@ -132,5 +132,14 @@ def test_get_variable():
     assert res == ["input", "output"]
 
 
-if __name__ == "__main__":
-    pytest.main()
+def test_str():
+    exp_result = "Instruction: '{input}'\n\nOutput: '{output}'"
+
+    template_input = "Instruction: '{input}'"
+    template_out = "Output: '{output}'"
+
+    prompt = Prompt()
+    prompt.add_part(content=template_input)
+    prompt.add_part(content=template_out)
+
+    assert prompt.__str__() == exp_result

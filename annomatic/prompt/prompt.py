@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from typing import Any, List
+from typing import Any, List, Optional
 
 from annomatic.prompt.segment import (
     LabelTemplateSegment,
@@ -26,9 +26,11 @@ class BasePrompt(ABC):
     def __str__(self):
         """
         Concatenates the string representations of the segment and returns them
-        without variables.
+        without substitution of variables.
         """
-        return self.to_string()
+        return BasePrompt.DEFAULT_SEPARATOR.join(
+            segment.content() for segment in self._segments
+        )
 
     def __call__(self, **kwargs: Any) -> str:
         """
@@ -73,14 +75,17 @@ class Prompt(BasePrompt):
     Prompts can be constructed by concatenating Segments.
 
     Attributes:
-        _segments: A list of segments in this Prompt
-        _variables: A list of string representing all variables in the Prompt
+        _segments: list of segments which make up the prompt
+
+
     """
 
-    def __init__(self, content: str = ""):
+    def __init__(self, content: Optional[str] = None):
         super().__init__()
         self._variables: List[str] = []
-        self.add_part(content)
+
+        if content is not None:
+            self.add_part(content)
 
     def get_variables(self) -> List[str]:
         """
@@ -95,7 +100,7 @@ class Prompt(BasePrompt):
             for var in segment.get_variables()
         ]
 
-    def add_part(self, content: str = ""):
+    def add_part(self, content: str):
         """
         Adds the given new content as a new part of the Prompt.
 
@@ -104,8 +109,6 @@ class Prompt(BasePrompt):
         Args:
             string containing the prompt
         """
-        if content == "":
-            return
         if check_template_format(content):
             self._segments.append(PromptTemplateSegment(template=content))
         else:
