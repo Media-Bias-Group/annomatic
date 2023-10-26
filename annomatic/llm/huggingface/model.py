@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from typing import List
 
@@ -6,7 +6,8 @@ from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
 
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, \
+        AutoTokenizer
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with huggingface" before using this model!'
@@ -31,6 +32,10 @@ class HuggingFaceModel(Model, ABC):
             **token_args,
         )
         self.model = None
+
+    @abstractmethod
+    def _format_output(self, decoded_output, messages):
+        pass
 
     def predict(self, messages: List[str]) -> ResponseList:
         """
@@ -63,12 +68,12 @@ class HuggingFaceModel(Model, ABC):
             return_tensors="pt",
             return_length=True,
         )
+
         # Pop length from model_inputs, otherwise set length to default (20)
         input_length = int(model_inputs.pop("length", 20).max())
         if self.model is not None and self.model.device.type == "cuda":
             model_inputs = model_inputs.to("cuda")
 
-        # TODO reasonable/dynamic max_length
         model_outputs = self.model.generate(
             **model_inputs,
             max_length=input_length * 2,
@@ -79,11 +84,9 @@ class HuggingFaceModel(Model, ABC):
             skip_special_tokens=True,
         )
 
+        # TODO remove input if needed -> extract method
         # remove the input from any response
-        responses = [
-            response[len(prefix) :].strip()
-            for response, prefix in zip(decoded_output, messages)
-        ]
+        responses = self._format_output(decoded_output, messages)
 
         return ResponseList(responses, decoded_output)
 
@@ -120,3 +123,46 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
             model_name,
             **model_args,
         )
+
+    def _format_output(self, decoded_output, messages):
+        return [
+            response[len(prefix) :].strip()
+            for response, prefix in zip(decoded_output, messages)
+        ]
+
+
+class HFAutoModelForSeq2SeqLM(HuggingFaceModel):
+    """
+    A model that uses the AutoModelForSeq2SeqLM class from the HuggingFace
+    transformers library.
+
+    This model uses models that are available for the
+    AutoModelForSeq2SeqLM class.
+
+    See
+    https://huggingface.co/transformers/v3.5.1/model_doc/auto.html#tfautomodelforseq2seqlm
+    for details.
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        model_args=None,
+        token_args=None,
+    ):
+        super().__init__(model_name=model_name, token_args=token_args)
+
+        if model_args is None:
+            model_args = {}
+
+        if not any(arg in model_args for arg in ["device", "device_map"]):
+            print("No device option defined. Set 'device_map'='auto'")
+            model_args["device_map"] = "auto"
+
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_name,
+            **model_args,
+        )
+
+    def _format_output(self, decoded_output, messages):
+        return decoded_output

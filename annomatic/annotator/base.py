@@ -1,5 +1,6 @@
-import logging
 from abc import ABC, abstractmethod
+
+from annomatic.llm.base import Model
 
 
 class BaseAnnotator(ABC):
@@ -18,7 +19,13 @@ class BaseAnnotator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def _load_model(self):
+    def _load_model(self) -> Model:
+        """
+        Loads the model.
+
+        Returns:
+            The loaded model.
+        """
         pass
 
 
