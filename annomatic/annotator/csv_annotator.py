@@ -227,8 +227,6 @@ class CsvAnnotator(BaseAnnotator):
         Annotates the input CSV file and writes the annotated data to the
         output CSV file.
 
-        TODO the batch is only 1 row for now
-
         Args:
             kwargs: a dict containing the input variables for templates
         """
@@ -270,6 +268,8 @@ class OpenAiCsvAnnotator(CsvAnnotator):
     Annotator class for OpenAI models that use CSV files as input and output.
     """
 
+    DEFAULT_BATCH_SIZE = 1
+
     def __init__(
         self,
         api_key: str = "",
@@ -292,6 +292,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         )
         self.api_key = api_key
         self.temperature = temperature
+        self.batch_size = OpenAiCsvAnnotator.DEFAULT_BATCH_SIZE
 
     def _load_model(self):
         self.model = OpenAiModel(

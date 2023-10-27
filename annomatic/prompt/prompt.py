@@ -21,7 +21,7 @@ class BasePrompt(ABC):
 
     @abstractmethod
     def __init__(self):
-        self._segments: List[PromptSegment] = []
+        self._segments = []
 
     def __str__(self):
         """

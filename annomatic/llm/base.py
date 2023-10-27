@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from typing import Any, Union
+from typing import Any, List, Union
 
 
 class Response:
@@ -45,7 +45,7 @@ class ResponseList:
         if data is None:
             data = []
         if queries is None:
-            data = []
+            queries = []
         if len(answers) != len(data):
             raise ValueError(
                 "The length of 'answers' and 'data' lists must be the same.",
@@ -54,6 +54,17 @@ class ResponseList:
             Response(answer=answer, data=data_point, query=query)
             for answer, data_point, query in zip(answers, data, queries)
         ]
+
+    @staticmethod
+    def from_responses(responses: List[Response]) -> "ResponseList":
+        """
+        Create a ResponseList from a list of Responses
+        """
+        return ResponseList(
+            answers=[response.answer for response in responses],
+            data=[response.data for response in responses],
+            queries=[response.query for response in responses],
+        )
 
     def __len__(self):
         return len(self.responses)
@@ -77,7 +88,8 @@ class Model(ABC):
     """
 
     @abstractmethod
-    def predict(self, messages) -> ResponseList:
+    def predict(self, messages: List[str]) -> ResponseList:
         """
         Predict the given messages. Message can be of type str or List[str]
+        # TODO introduce List[List[str]] for multiple conversations
         """
