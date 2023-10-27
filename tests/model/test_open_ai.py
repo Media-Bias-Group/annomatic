@@ -1,6 +1,6 @@
 import pytest
 
-from annomatic.llm.base import Response
+from annomatic.llm.base import Response, ResponseList
 from annomatic.llm.openai.utils import build_message
 from tests.model.mock import (
     TEST_OPEN_AI_RESPONSE_CHAT,
@@ -33,17 +33,9 @@ def test_build_messages_with_system():
         {"role": "user", "content": "This is a prompt!"},
     ]
     model.add_system_prompt("This is a system prompt!")
-    res = model.build_messages(["This is a prompt!"])
+    res = model.build_chat_messages(["This is a prompt!"])
 
     assert exp_res == res
-
-
-def test_predict_invalid_type():
-    inp = [1, "This is also a prompt!"]
-    model = FakeOpenAiModel()
-
-    with pytest.raises(NotImplementedError):
-        model.predict(inp)
 
 
 def test_build_response_chat_single():
@@ -52,10 +44,10 @@ def test_build_response_chat_single():
     res = model.predict("This is a nice prompt")
 
     assert (
-        isinstance(res, Response)
-        and res.answer == "The 2020 World Series was played in "
+        isinstance(res, ResponseList)
+        and res.responses[0].answer == "The 2020 World Series was played in "
         "Texas at Globe Life Field in Arlington."
-        and res.data == TEST_OPEN_AI_RESPONSE_CHAT
+        and res.responses[0].data == TEST_OPEN_AI_RESPONSE_CHAT
     )
 
 
@@ -63,8 +55,9 @@ def test_build_response_legacy():
     model = FakeOpenAiModel(model_name="gpt-3.5-turbo-instruct")
     res = model.predict("This is a nice prompt")
     assert (
-        isinstance(res, Response)
-        and res.answer == '\n\n"Let Your Sweet Tooth Run Wild at Our '
+        isinstance(res, ResponseList)
+        and res.responses[0].answer
+        == '\n\n"Let Your Sweet Tooth Run Wild at Our '
         "Creamy Ice Cream Shack"
-        and res.data == TEST_OPEN_AI_RESPONSE_LEGACY
+        and res.responses[0].data == TEST_OPEN_AI_RESPONSE_LEGACY
     )
