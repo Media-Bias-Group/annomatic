@@ -50,6 +50,9 @@ class HuggingFaceModel(Model, ABC):
                 "Model is not initialized!",
             )
 
+        if isinstance(messages, str):
+            messages = [messages]
+
         if isinstance(messages, List) and len(messages) > 1:
             padding = True
             if not self.tokenizer.pad_token:
@@ -72,14 +75,9 @@ class HuggingFaceModel(Model, ABC):
         if self.model is not None and self.model.device.type == "cuda":
             model_inputs = model_inputs.to("cuda")
 
-        model_outputs = self.model.generate(
-            **model_inputs,
-            max_length=input_length * 2,
-        )
-
-        decoded_output = self.tokenizer.batch_decode(
-            model_outputs,
-            skip_special_tokens=True,
+        decoded_output = self._call_llm_and_decode(
+            model_inputs,
+            2 * input_length,
         )
 
         # remove the input from any response (if needed)
@@ -88,6 +86,23 @@ class HuggingFaceModel(Model, ABC):
             answers=responses,
             data=decoded_output,
             queries=messages,
+        )
+
+    def _call_llm_and_decode(
+        self,
+        model_inputs,
+        output_length: int,
+    ) -> List[str]:
+        """
+        makes the library call for the LLM prediction.
+        """
+        model_outputs = self.model.generate(
+            **model_inputs,
+            max_length=output_length,
+        )
+        return self.tokenizer.batch_decode(
+            model_outputs,
+            skip_special_tokens=True,
         )
 
 

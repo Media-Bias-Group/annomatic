@@ -19,6 +19,7 @@ optional = true
 
 [tool.poetry.group.openai.dependencies]
 openai = "^0.28.1"
+tenacity = "^8.2.3"
 
 # HugginFace
 [tool.poetry.group.huggingface]
