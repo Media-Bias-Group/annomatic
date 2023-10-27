@@ -2,7 +2,7 @@ import logging
 
 import pandas as pd
 from enum import Enum
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from annomatic.annotator.base import BaseAnnotator
 from annomatic.io import CsvInput, CsvOutput
@@ -222,13 +222,17 @@ class CsvAnnotator(BaseAnnotator):
         except Exception as write_error:
             LOGGER.error(f"Output writing error: {str(write_error)}")
 
-    def _annotate_batch(self, batch: pd.DataFrame, **kwargs):
+    def _annotate_batch(self, batch: pd.DataFrame, **kwargs) -> List[dict]:
         """
         Annotates the input CSV file and writes the annotated data to the
         output CSV file.
 
         Args:
+            batch: pd.DataFrame representing the input data.
             kwargs: a dict containing the input variables for templates
+
+        Returns:
+            List[dict]: a list of dicts containing the annotated data
         """
 
         if self.model is None or self._prompt is None:
@@ -243,7 +247,7 @@ class CsvAnnotator(BaseAnnotator):
                 kwargs[str(self.in_col)] = row[str(self.in_col)]
                 messages.append(self._prompt(**kwargs))
 
-            responses: ResponseList = self.model.predict(messages=messages)
+            responses = self._model_predict(messages)
 
             annotated_data = []
             for idx, response in enumerate(responses):
@@ -261,6 +265,18 @@ class CsvAnnotator(BaseAnnotator):
             # TODO introduce a custom exception
             LOGGER.error(f"Prediction error: {str(prediction_error)}")
             return None
+
+    def _model_predict(self, messages: List[str]) -> ResponseList:
+        """
+        Wrapper of the model predict method.
+
+        Args:
+            messages: List[str] representing the input messages.
+
+        Returns:
+            ResponseList: an object containing the Responses.
+        """
+        return self.model.predict(messages=messages)
 
 
 class OpenAiCsvAnnotator(CsvAnnotator):
