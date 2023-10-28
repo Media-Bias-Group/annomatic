@@ -25,5 +25,7 @@ jobs:
         run: poetry install --with dev
       - name: Install openAI dependencies
         run: poetry install --with openai
+      - name: Install huggingface dependencies
+        run: poetry install --with huggingface
       - name: Test with pytest
         run: poetry run pytest

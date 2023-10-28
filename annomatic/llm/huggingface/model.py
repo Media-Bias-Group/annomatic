@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from typing import List
+from typing import List, Optional, Union
 
 from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
@@ -29,7 +29,9 @@ class HuggingFaceModel(Model, ABC):
             model_name,
             **token_args,
         )
-        self.model = None
+        self.model: Optional[
+            Union[AutoModelForCausalLM, AutoModelForSeq2SeqLM]
+        ] = None
 
     @abstractmethod
     def _format_output(self, decoded_output, messages):
@@ -96,6 +98,9 @@ class HuggingFaceModel(Model, ABC):
         """
         makes the library call for the LLM prediction.
         """
+        if self.model is None:
+            raise ValueError("Model is not initialized!")
+
         model_outputs = self.model.generate(
             **model_inputs,
             max_length=output_length,
@@ -137,9 +142,11 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
             print("No device option defined. Set 'device_map'='auto'")
             model_args["device_map"] = "auto"
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            **model_args,
+        self.model: AutoModelForCausalLM = (
+            AutoModelForCausalLM.from_pretrained(
+                model_name,
+                **model_args,
+            )
         )
 
     def _format_output(self, decoded_output, messages):
@@ -179,9 +186,11 @@ class HFAutoModelForSeq2SeqLM(HuggingFaceModel):
             print("No device option defined. Set 'device_map'='auto'")
             model_args["device_map"] = "auto"
 
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(
-            model_name,
-            **model_args,
+        self.model: AutoModelForSeq2SeqLM = (
+            AutoModelForSeq2SeqLM.from_pretrained(
+                model_name,
+                **model_args,
+            )
         )
 
     def _format_output(self, decoded_output, messages):

@@ -1,4 +1,5 @@
 import pytest
+
 from annomatic.prompt.base import FstringTemplater
 
 

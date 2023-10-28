@@ -7,7 +7,7 @@ from annomatic.llm.base import Response, ResponseList
 LOGGER = logging.getLogger(__name__)
 
 
-def build_message(content: str, role: str = "user"):
+def build_message(content: str, role: str = "user") -> dict[str, str]:
     """
     Build a structured message.
 
