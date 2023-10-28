@@ -1,17 +1,21 @@
 import logging
 
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from annomatic.llm.base import Model, Response, ResponseList, \
-    ModelPredictionError
+from annomatic.llm.base import Model, ModelPredictionError, Response, ResponseList
 from annomatic.llm.openai.utils import _build_response, build_message
 
 LOGGER = logging.getLogger(__name__)
 
 try:
     import openai
-    from tenacity import retry, stop_after_attempt, wait_fixed, \
-        wait_random_exponential, retry_if_exception_type
+    from tenacity import (
+        retry,
+        retry_if_exception_type,
+        stop_after_attempt,
+        wait_fixed,
+        wait_random_exponential,
+    )
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with openai" before using this model!',
@@ -45,10 +49,10 @@ class OpenAiModel(Model):
     COMPLETION_ONLY = ["gpt-3.5-turbo-instruct"]
 
     def __init__(
-            self,
-            api_key: str = "",
-            model_name: str = "gpt-3.5-turbo",
-            temperature=0.0,
+        self,
+        api_key: str = "",
+        model_name: str = "gpt-3.5-turbo",
+        temperature=0.0,
     ):
         """
         Initialize the OpenAI model.
@@ -67,8 +71,8 @@ class OpenAiModel(Model):
             LOGGER.info("Warning. Legacy API used!")
 
         self._model = valid_model(model_name=model_name)
-        self._temperature = temperature
-        self.system_prompt: Optional[str] = None
+        self._temperature: int = temperature
+        self.system_prompt: Optional[dict[str, str]] = None
         if api_key == "":
             raise ValueError("No OPEN AI key given!")
 
@@ -104,7 +108,7 @@ class OpenAiModel(Model):
                 )
         except Exception as exception:
             raise ModelPredictionError(
-                f"OpenAI Model prediction Error: {exception}"
+                f"OpenAI Model prediction Error: {exception}",
             )
 
     def _predict(self, messages: List[str]) -> ResponseList:
@@ -126,15 +130,17 @@ class OpenAiModel(Model):
         else:
             messages = self.build_chat_messages(messages)
             api_response = self._call_chat_completions_api(
-                messages=messages)
+                messages=messages,
+            )
 
         return ResponseList.from_responses(
-            [_build_response(message=messages[0], api_response=api_response)])
+            [_build_response(message=messages[0], api_response=api_response)],
+        )
 
     @retry(
         wait=wait_random_exponential(min=1, max=60),
         stop=stop_after_attempt(6),
-        retry=retry_if_exception_type(openai.error.RateLimitError)
+        retry=retry_if_exception_type(openai.error.RateLimitError),
     )
     def _call_completion_api(self, prompt: str):
         """
@@ -161,7 +167,7 @@ class OpenAiModel(Model):
     @retry(
         wait=wait_random_exponential(min=1, max=60),
         stop=stop_after_attempt(6),
-        retry=retry_if_exception_type(openai.error.RateLimitError)
+        retry=retry_if_exception_type(openai.error.RateLimitError),
     )
     def _call_chat_completions_api(self, messages: List[str]):
         """
@@ -211,7 +217,7 @@ class OpenAiModel(Model):
                 "The used model is a Legacy model. System prompt is NOT used!",
             )
 
-    def build_messages(self, prompts: List[str]) -> List[dict]:
+    def build_messages(self, prompts: List[str]) -> List[dict[Any, Any]]:
         """
         Build a list o encoded messages for the OpenAI Library.
 
@@ -288,4 +294,4 @@ class OpenAiModel(Model):
 
         messages = self.build_chat_messages(messages)
         api_response = self._call_chat_completions_api(messages=messages)
-        return _build_response(api_response)
+        return _build_response(message=messages[0], api_response=api_response)

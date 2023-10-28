@@ -17,12 +17,12 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
     """
 
     def __init__(
-            self,
-            model_lib: str = "",
-            model_name: str = " ",
-            model_args: Optional[dict] = None,
-            out_path: str = "",
-            **kwargs,
+        self,
+        model_lib: str = "",
+        model_name: str = " ",
+        model_args: Optional[dict] = None,
+        out_path: str = "",
+        **kwargs,
     ):
         super().__init__(model_name, model_lib, model_args, out_path, **kwargs)
 
@@ -58,12 +58,12 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
     """
 
     def __init__(
-            self,
-            model_lib: str,
-            model_name: str = " ",
-            model_args: Optional[dict] = None,
-            out_path: str = "",
-            **kwargs,
+        self,
+        model_lib: str,
+        model_name: str = " ",
+        model_args: Optional[dict] = None,
+        out_path: str = "",
+        **kwargs,
     ):
         super().__init__(model_name, model_lib, model_args, out_path, **kwargs)
 

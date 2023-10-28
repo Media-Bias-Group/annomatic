@@ -265,7 +265,7 @@ class CsvAnnotator(BaseAnnotator):
             # TODO introduce a custom exception
             LOGGER.error(f"Prediction error: {str(exception)}")
 
-            return None
+            return []
 
     def _model_predict(self, messages: List[str]) -> ResponseList:
         """
@@ -277,6 +277,9 @@ class CsvAnnotator(BaseAnnotator):
         Returns:
             ResponseList: an object containing the Responses.
         """
+        if self.model is None:
+            raise ValueError("Model is not initialized!")
+
         return self.model.predict(messages=messages)
 
 
