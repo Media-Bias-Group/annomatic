@@ -63,6 +63,13 @@ class CsvAnnotator(BaseAnnotator):
         self.model: Optional[Model] = None  # lazy loaded with first annotation
         self.model_lib = model_lib
 
+    def _validate_input_column(self) -> bool:
+        if self._prompt is None or self.in_col is None:
+            # no validation possible
+            return True
+
+        return self.in_col in self._prompt.get_variables()
+
     def set_data(
         self,
         data: Union[pd.DataFrame, str],
@@ -84,6 +91,9 @@ class CsvAnnotator(BaseAnnotator):
         self.in_col = in_col
         self.to_kwargs = to_kwargs
 
+        if not self._validate_input_column():
+            raise ValueError("Input column does not occur in prompt!")
+
         if isinstance(data, pd.DataFrame):
             self._input = data
         elif isinstance(data, str):
@@ -100,8 +110,14 @@ class CsvAnnotator(BaseAnnotator):
 
         if isinstance(prompt, Prompt):
             self._prompt = prompt
+
+            if not self._validate_input_column():
+                raise ValueError("Input column does not occur in prompt!")
+
         elif isinstance(prompt, str):
             self._prompt = Prompt(content=prompt)
+            if not self._validate_input_column():
+                raise ValueError("Input column does not occur in prompt!")
         else:
             raise ValueError(
                 "Invalid input type! " "Only Prompt or str is supported.",
@@ -159,7 +175,7 @@ class CsvAnnotator(BaseAnnotator):
         if data is not None:
             self.set_data(
                 data=data,
-                in_col=kwargs.get("input_col", "input"),
+                in_col=kwargs.get("in_col", "input"),
                 to_kwargs=kwargs.get("to_kwargs", False),
             )
 
