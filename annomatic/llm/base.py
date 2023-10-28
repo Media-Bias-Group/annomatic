@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from typing import Any
+from typing import Any, List, Union
 
 
 class Response:
@@ -10,14 +10,24 @@ class Response:
     Arguments:
         answer: the parsed answer
         _data: is the raw unedited output produced by the model
+        _query: the query that was asked
     """
 
-    def __init__(self, answer: str, data: Any):
+    def __init__(self, answer: str, data: Any, query: str):
         self.answer = answer
         self._data = data
+        self._query = query
 
     def __str__(self):
         return self.answer
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def query(self):
+        return self._query
 
 
 class ResponseList:
@@ -29,19 +39,32 @@ class ResponseList:
         data: list of raw unedited outputs produced by the model
     """
 
-    def __init__(self, answers=None, data=None):
+    def __init__(self, answers=None, data=None, queries=None):
         if answers is None:
             answers = []
         if data is None:
             data = []
+        if queries is None:
+            queries = []
         if len(answers) != len(data):
             raise ValueError(
                 "The length of 'answers' and 'data' lists must be the same.",
             )
         self.responses = [
-            Response(answer, data_point)
-            for answer, data_point in zip(answers, data)
+            Response(answer=answer, data=data_point, query=query)
+            for answer, data_point, query in zip(answers, data, queries)
         ]
+
+    @staticmethod
+    def from_responses(responses: List[Response]) -> "ResponseList":
+        """
+        Create a ResponseList from a list of Responses
+        """
+        return ResponseList(
+            answers=[response.answer for response in responses],
+            data=[response.data for response in responses],
+            queries=[response.query for response in responses],
+        )
 
     def __len__(self):
         return len(self.responses)
@@ -65,7 +88,15 @@ class Model(ABC):
     """
 
     @abstractmethod
-    def predict(self, message):
+    def predict(self, messages: List[str]) -> ResponseList:
         """
-        Predict the given message. Message can be of type str or List[str]
+        Predict the given messages. Message can be of type str or List[str]
+        # TODO introduce List[List[str]] for multiple conversations
         """
+
+
+class ModelPredictionError(Exception):
+    """Custom exception for model prediction errors."""
+
+    def __init__(self, message):
+        super().__init__(message)

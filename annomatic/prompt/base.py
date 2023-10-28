@@ -1,5 +1,6 @@
 import re
 from abc import ABC, abstractmethod
+
 from typing import Any, List
 
 
@@ -10,7 +11,7 @@ class BaseTemplater(ABC):
 
     @abstractmethod
     def __init__(self):
-        self._variables: List[str]
+        self._variables: List[str] = []
 
     @abstractmethod
     def get_variables(self) -> List[str]:
@@ -73,3 +74,7 @@ class FstringTemplater(BaseTemplater):
             return self._template.format_map(kwargs)
         except KeyError as e:
             raise ValueError(f"Missing variable: {e.args[0]}") from None
+
+    @property
+    def template(self):
+        return self._template

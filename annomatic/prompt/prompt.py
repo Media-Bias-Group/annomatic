@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from typing import Any, List
+from typing import Any, List, Optional
 
 from annomatic.prompt.segment import (
     LabelTemplateSegment,
@@ -21,7 +21,30 @@ class BasePrompt(ABC):
 
     @abstractmethod
     def __init__(self):
-        self._segments: List[PromptSegment] = []
+        self._segments = []
+
+    def __str__(self):
+        """
+        Concatenates the string representations of the segment and returns them
+        without substitution of variables.
+        """
+        return BasePrompt.DEFAULT_SEPARATOR.join(
+            segment.content() for segment in self._segments
+        )
+
+    def __call__(self, **kwargs: Any) -> str:
+        """
+        Concatenates the string representations of the segment and returns them
+        with variables in kwargs.
+
+        Calls the to_string method with the given kwargs.
+
+        Args:
+            kwargs: a dict containing the input variables for templates
+        Returns:
+            string representation of the prompt
+        """
+        return self.to_string(**kwargs)
 
     def to_string(
         self,
@@ -29,7 +52,8 @@ class BasePrompt(ABC):
         **kwargs: Any,
     ) -> str:
         """
-        Concatenates the string representations of the strings and returns them
+        Concatenates the string representations of the segment and returns them
+        with variables in kwargs.
 
         Args:
             separator: The separator to include between segments.
@@ -51,14 +75,17 @@ class Prompt(BasePrompt):
     Prompts can be constructed by concatenating Segments.
 
     Attributes:
-        _segments: A list of segments in this Prompt
-        _variables: A list of string representing all variables in the Prompt
+        _segments: list of segments which make up the prompt
+
+
     """
 
-    def __init__(self, content: str = ""):
+    def __init__(self, content: Optional[str] = None):
         super().__init__()
         self._variables: List[str] = []
-        self.add_part(content)
+
+        if content is not None:
+            self.add_part(content)
 
     def get_variables(self) -> List[str]:
         """
@@ -73,7 +100,7 @@ class Prompt(BasePrompt):
             for var in segment.get_variables()
         ]
 
-    def add_part(self, content: str = ""):
+    def add_part(self, content: str):
         """
         Adds the given new content as a new part of the Prompt.
 
@@ -82,14 +109,12 @@ class Prompt(BasePrompt):
         Args:
             string containing the prompt
         """
-        if content == "":
-            return
         if check_template_format(content):
             self._segments.append(PromptTemplateSegment(template=content))
         else:
             self._segments.append(PromptPlainSegment(content=content))
 
-    def add_labels_part(self, content: str = ""):
+    def add_labels_part(self, content, label_var="label"):
         """
         Adds the given new content as a new part of the Prompt.
 
@@ -98,9 +123,10 @@ class Prompt(BasePrompt):
         Args:
             string containing the prompt
         """
-        if content == "":
-            return
         if check_template_format(content):
-            self._segments.append(LabelTemplateSegment(template=content))
+            # todo find var out of template
+            self._segments.append(
+                LabelTemplateSegment(template=content, label_var=label_var),
+            )
         else:
             self._segments.append(PromptPlainSegment(content=content))

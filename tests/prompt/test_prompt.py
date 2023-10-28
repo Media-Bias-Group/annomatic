@@ -105,7 +105,7 @@ def test_basic_prompt_multiple_inputs():
 
     prompt = Prompt()
     prompt.add_part(content=template_input)
-    prompt.add_labels_part(content=template_task)
+    prompt.add_labels_part(content=template_task, label_var="labels")
     prompt.add_part(content=template_out)
 
     res = prompt.to_string(
@@ -132,5 +132,14 @@ def test_get_variable():
     assert res == ["input", "output"]
 
 
-if __name__ == "__main__":
-    pytest.main()
+def test_str():
+    exp_result = "Instruction: '{input}'\n\nOutput: '{output}'"
+
+    template_input = "Instruction: '{input}'"
+    template_out = "Output: '{output}'"
+
+    prompt = Prompt()
+    prompt.add_part(content=template_input)
+    prompt.add_part(content=template_out)
+
+    assert prompt.__str__() == exp_result

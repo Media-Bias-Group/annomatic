@@ -1,1 +1,1 @@
-from .csv_annotator import OpenAICsvAnnotator
+from .csv_annotator import HuggingFaceCsvAnnotator, OpenAiCsvAnnotator

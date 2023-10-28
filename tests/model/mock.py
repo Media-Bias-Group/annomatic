@@ -1,6 +1,8 @@
 from typing import List
 
-from annomatic.llm.openai.model import OpenAiModel
+from annomatic.llm.huggingface import HFAutoModelForCausalLM
+from annomatic.llm.huggingface.model import HFAutoModelForSeq2SeqLM
+from annomatic.llm.openai import OpenAiModel
 
 TEST_OPEN_AI_RESPONSE_CHAT = {
     "choices": [
@@ -52,8 +54,8 @@ class FakeOpenAiModel(OpenAiModel):
     Mock model of the OpenAI model
     """
 
-    def __init__(self, model="gpt-3.5-turbo"):
-        super().__init__(api_key="test_key", model=model)
+    def __init__(self, model_name="gpt-3.5-turbo"):
+        super().__init__(api_key="test_key", model_name=model_name)
 
     def _call_completion_api(self, prompt: str):
         """
@@ -65,9 +67,7 @@ class FakeOpenAiModel(OpenAiModel):
         Returns am mocked output for testing
         """
 
-        result = TEST_OPEN_AI_RESPONSE_LEGACY
-
-        return result
+        return TEST_OPEN_AI_RESPONSE_LEGACY
 
     def _call_chat_completions_api(self, messages: List[str]):
         """
@@ -79,6 +79,46 @@ class FakeOpenAiModel(OpenAiModel):
         Returns am mocked output for testing
         """
 
-        response = TEST_OPEN_AI_RESPONSE_CHAT
+        return TEST_OPEN_AI_RESPONSE_CHAT
 
-        return response
+
+class FakeHFAutoModelForCausalLM(HFAutoModelForCausalLM):
+    def __init__(self):
+        self.model = None
+
+    def _format_output(self, decoded_output, messages):
+        return decoded_output
+
+    def _call_llm_and_decode(
+        self,
+        model_inputs,
+        output_length: int,
+    ) -> List[str]:
+        return [
+            "mocked output",
+            "mocked output2",
+            "mocked output3",
+            "mocked output4" "mocked output5",
+            "mocked output6",
+        ]
+
+
+class FakeHFAutoModelForSeq2SeqLM(HFAutoModelForSeq2SeqLM):
+    def __init__(self):
+        self.model = None
+
+    def _format_output(self, decoded_output, messages):
+        return decoded_output
+
+    def _call_llm_and_decode(
+        self,
+        model_inputs,
+        output_length: int,
+    ) -> List[str]:
+        return [
+            "mocked output",
+            "mocked output2",
+            "mocked output3",
+            "mocked output4" "mocked output5",
+            "mocked output6",
+        ]

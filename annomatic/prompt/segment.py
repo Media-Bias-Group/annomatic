@@ -33,6 +33,13 @@ class PromptSegment(ABC):
         """
         pass
 
+    @abstractmethod
+    def content(self):
+        """
+        Returns the content without input variables filled in.
+        """
+        pass
+
 
 class PromptPlainSegment(PromptSegment):
     """
@@ -56,6 +63,9 @@ class PromptPlainSegment(PromptSegment):
     def to_string(self, **kwargs: Any) -> str:
         return self._content
 
+    def content(self):
+        return self._content
+
 
 class PromptTemplateSegment(PromptSegment):
     """
@@ -68,7 +78,6 @@ class PromptTemplateSegment(PromptSegment):
     """
 
     def __init__(self, template: str = ""):
-        super().__init__()
         self._template = FstringTemplater(template)
 
     def get_variables(self) -> List[str]:
@@ -76,6 +85,9 @@ class PromptTemplateSegment(PromptSegment):
 
     def to_string(self, **kwargs: Any) -> str:
         return self._template.parse(**kwargs)
+
+    def content(self):
+        return self._template.template
 
 
 class LabelTemplateSegment(PromptSegment):
@@ -93,8 +105,7 @@ class LabelTemplateSegment(PromptSegment):
     LAST_SEPARATOR = " or "
     """Separator between last two labels"""
 
-    def __init__(self, template: str, label_var: str = "labels"):
-        super().__init__()
+    def __init__(self, template: str, label_var: str = "label"):
         self._template = FstringTemplater(template)
         self._label_var = label_var
 
@@ -121,3 +132,6 @@ class LabelTemplateSegment(PromptSegment):
                 )
         else:
             return self._template.parse(**kwargs)
+
+    def content(self):
+        return self._template.template

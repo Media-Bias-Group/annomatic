@@ -2,38 +2,56 @@ import logging
 
 from typing import Any, List, Optional
 
-from annomatic.llm.base import Model, Response
+from annomatic.llm.base import Model, ModelPredictionError, Response, ResponseList
 from annomatic.llm.openai.utils import _build_response, build_message
 
 LOGGER = logging.getLogger(__name__)
 
 try:
     import openai
+    from tenacity import (
+        retry,
+        retry_if_exception_type,
+        stop_after_attempt,
+        wait_fixed,
+        wait_random_exponential,
+    )
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with openai" before using this model!',
         e,
     ) from None
 
-SUPPORTED_MODEL = ["gpt-4", "gpt-3.5-turbo", "gpt-3.5-turbo-instruct"]
-COMPLETION_ONLY = ["gpt-3.5-turbo-instruct"]
 
-
-def valid_model(model: str) -> str:
-    if model not in SUPPORTED_MODEL:
+def valid_model(model_name: str) -> str:
+    if model_name not in OpenAiModel.SUPPORTED_MODEL:
         LOGGER.warning(
             "Given Model not found use default (gpt-3.5-turbo)",
         )
         return "gpt-3.5-turbo"
 
-    return model
+    return model_name
+
+
+def _handle_open_ai_exception(exception: Exception):
+    if isinstance(exception, openai.error.APIError):
+        LOGGER.warning(f"APIError: {exception}")
+        pass
+    elif isinstance(exception, openai.error.RateLimitError):
+        LOGGER.warning(f"Rate Limit Error: {exception}")
+        pass
+    else:
+        raise exception
 
 
 class OpenAiModel(Model):
+    SUPPORTED_MODEL = ["gpt-4", "gpt-3.5-turbo", "gpt-3.5-turbo-instruct"]
+    COMPLETION_ONLY = ["gpt-3.5-turbo-instruct"]
+
     def __init__(
         self,
         api_key: str = "",
-        model: str = "gpt-3.5-turbo",
+        model_name: str = "gpt-3.5-turbo",
         temperature=0.0,
     ):
         """
@@ -41,7 +59,7 @@ class OpenAiModel(Model):
 
         Arguments:
             api_key: The API key for accessing the OpenAI API.
-            model: string representing the selected model.
+            model_name: string representing the selected model.
                 (Default="gpt-3.5-turbo")
             temperature: The temperature parameter for text generation.
                 (Default=0.0)
@@ -49,17 +67,18 @@ class OpenAiModel(Model):
         Raises:
             ValueError: If no API key is provided.
         """
-        self._model = valid_model(model=model)
-        self._temperature = temperature
+        if model_name in self.COMPLETION_ONLY:
+            LOGGER.info("Warning. Legacy API used!")
 
-        self.system_prompt: Optional[str] = None
-
+        self._model = valid_model(model_name=model_name)
+        self._temperature: int = temperature
+        self.system_prompt: Optional[dict[str, str]] = None
         if api_key == "":
             raise ValueError("No OPEN AI key given!")
 
         openai.api_key = api_key
 
-    def predict(self, content: Any) -> Response:
+    def predict(self, messages: List[str]) -> ResponseList:
         """
         Predict output for the provided content.
 
@@ -67,7 +86,7 @@ class OpenAiModel(Model):
         and calls the appropriate prediction method.
 
         Arguments:
-            content: The content for which predictions should be made.
+            messages: The content for which predictions should be made.
 
         Returns:
             Response: Predicted output based on the provided content.
@@ -76,60 +95,53 @@ class OpenAiModel(Model):
             NotImplementedError:
             If the content type is not supported (not str or List[str]).
         """
-        if isinstance(content, str):
-            return self._predict_single(content)
-        elif isinstance(content, list) and all(
-            isinstance(item, str) for item in content
-        ):
-            return self._predict_list(content)
-        else:
-            raise NotImplementedError(
-                "unknown type! Needs to be str or List[str]!",
+        try:
+            if isinstance(messages, str):
+                messages = [messages]
+
+            if isinstance(messages, list):
+                return self._predict(messages=messages)
+
+            else:
+                raise NotImplementedError(
+                    "unknown type! Needs to be str or List[str]!",
+                )
+        except Exception as exception:
+            raise ModelPredictionError(
+                f"OpenAI Model prediction Error: {exception}",
             )
 
-    def _predict_list(self, content: List[str]) -> Response:
+    def _predict(self, messages: List[str]) -> ResponseList:
         """
-        Predict response for a list of prompts.
+        Predict response for a batch of prompts.
 
         Arguments:
-            content (List[str]): A list of prompts.
+            messages: A list of prompts.
 
         Returns:
             Any: Predicted output based on the provided prompts.
 
-        Raises:
-            ValueError: If using a legacy model that does not support multiple
-            messages.
         """
-        if self._model in COMPLETION_ONLY:
-            raise ValueError(
-                "multiple messages for Legacy API not implemented!",
+        if len(messages) > 1:
+            raise ValueError("Batch messages are not supported!")
+
+        if self._model in self.COMPLETION_ONLY:
+            api_response = self._call_completion_api(prompt=messages)
+        else:
+            messages = self.build_chat_messages(messages)
+            api_response = self._call_chat_completions_api(
+                messages=messages,
             )
 
-        messages = self.build_messages(content)
-        api_response = self._call_chat_completions_api(messages=messages)
-        return _build_response(api_response)
+        return ResponseList.from_responses(
+            [_build_response(message=messages[0], api_response=api_response)],
+        )
 
-    def _predict_single(self, content: str) -> Response:
-        """
-        Predict response for a single prompt.
-
-        Arguments:
-            content: string with the content of the prompt.
-
-        Returns:
-            Any: Predicted output based on the provided prompt.
-
-        """
-        if self._model in COMPLETION_ONLY:
-            LOGGER.info("Legacy API used!")
-            api_response = self._call_completion_api(prompt=content)
-            return _build_response(api_response)
-
-        messages = self.build_messages([content])
-        api_response = self._call_chat_completions_api(messages=messages)
-        return _build_response(api_response)
-
+    @retry(
+        wait=wait_random_exponential(min=1, max=60),
+        stop=stop_after_attempt(6),
+        retry=retry_if_exception_type(openai.error.RateLimitError),
+    )
     def _call_completion_api(self, prompt: str):
         """
         Makes the function call to the Completion API like specified in
@@ -144,12 +156,19 @@ class OpenAiModel(Model):
         Returns:
             The Completion object produced by the OpenAI Model
         """
+        try:
+            return openai.Completion.create(
+                model=self._model,
+                prompt=prompt,
+            )
+        except Exception as exception:
+            _handle_open_ai_exception(exception)
 
-        return openai.Completion.create(
-            model=self._model,
-            prompt=prompt,
-        )
-
+    @retry(
+        wait=wait_random_exponential(min=1, max=60),
+        stop=stop_after_attempt(6),
+        retry=retry_if_exception_type(openai.error.RateLimitError),
+    )
     def _call_chat_completions_api(self, messages: List[str]):
         """
         Makes the function call to the Chat Completion API like specified in
@@ -162,15 +181,21 @@ class OpenAiModel(Model):
         Returns:
             The Completion object produced by the OpenAI Model
         """
-        return openai.ChatCompletion.create(
-            model=self._model,
-            messages=messages,
-            temperature=self._temperature,
-        )
+        if len(messages) > 1:
+            raise ValueError("Only one message is supported")
+
+        try:
+            return openai.ChatCompletion.create(
+                model=self._model,
+                messages=messages,
+                temperature=self._temperature,
+            )
+        except Exception as exception:
+            _handle_open_ai_exception(exception)
 
     def add_system_prompt(self, content: str):
         """
-        Add a initial system prompt to the conversation.
+        Add an initial system prompt to the conversation.
 
         This method adds a system prompt to the conversation
         if the selected model supports it. Only models which supporting the new
@@ -182,7 +207,7 @@ class OpenAiModel(Model):
         Arguments:
             content: string containing the system prompt content.
         """
-        if self._model not in COMPLETION_ONLY:
+        if self._model not in self.COMPLETION_ONLY:
             self.system_prompt = build_message(
                 content=content,
                 role="system",
@@ -192,9 +217,36 @@ class OpenAiModel(Model):
                 "The used model is a Legacy model. System prompt is NOT used!",
             )
 
-    def build_messages(self, prompts: List[str]):
+    def build_messages(self, prompts: List[str]) -> List[dict[Any, Any]]:
         """
-        Build a list of messages.
+        Build a list o encoded messages for the OpenAI Library.
+
+        This function creates the messages list in the format specified in the
+        Chat Completions API provided by OpenAI.
+        https://platform.openai.com/docs/guides/gpt/chat-completions-api
+
+        The format is a list containing messages. The prompt given to this
+
+        Arguments:
+            prompts: content of the prompt, made by the user.
+
+        Returns:
+            list: A list of the individual conversations messages
+        """
+        messages = []
+        if self.system_prompt is not None:
+            messages.append(self.system_prompt)
+
+        for prompt in prompts:
+            messages.append(build_message(prompt))
+
+        return messages
+
+    # Deprecation Warning
+
+    def build_chat_messages(self, prompts: List[str]):
+        """
+        Build a list of chat messages.
 
         This function creates the messages list in the format specified in the
         Chat Completions API provided by OpenAI.
@@ -216,3 +268,30 @@ class OpenAiModel(Model):
             messages.append(build_message(prompt))
 
         return messages
+
+    def _predict_chat(self, messages: List[str]):
+        """
+        Predict response for a list of prompts.
+
+        Arguments:
+            messages (List[str]): A list of prompts.
+
+        Returns:
+            Any: Predicted output based on the provided prompts.
+
+        Raises:
+            ValueError: If using a legacy model that does not support multiple
+            messages.
+        """
+
+        if len(messages) <= 1:
+            raise ValueError("Only more than  is supported")
+
+        if self._model in self.COMPLETION_ONLY:
+            raise ValueError(
+                "multiple messages for Legacy API not implemented!",
+            )
+
+        messages = self.build_chat_messages(messages)
+        api_response = self._call_chat_completions_api(messages=messages)
+        return _build_response(message=messages[0], api_response=api_response)
