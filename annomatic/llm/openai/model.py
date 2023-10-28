@@ -2,14 +2,16 @@ import logging
 
 from typing import List, Optional
 
-from annomatic.llm.base import Model, Response, ResponseList
+from annomatic.llm.base import Model, Response, ResponseList, \
+    ModelPredictionError
 from annomatic.llm.openai.utils import _build_response, build_message
 
 LOGGER = logging.getLogger(__name__)
 
 try:
     import openai
-    from tenacity import retry, stop_after_attempt, wait_fixed, wait_random_exponential
+    from tenacity import retry, stop_after_attempt, wait_fixed, \
+        wait_random_exponential, retry_if_exception_type
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with openai" before using this model!',
@@ -27,18 +29,15 @@ def valid_model(model_name: str) -> str:
     return model_name
 
 
-def _handle_exception(exception: Exception):
+def _handle_open_ai_exception(exception: Exception):
     if isinstance(exception, openai.error.APIError):
-        print(f"OpenAI API returned an API Error: {exception}")
+        LOGGER.warning(f"APIError: {exception}")
         pass
-
-    elif isinstance(exception, openai.error.APIConnectionError):
-        print(f"OpenAI API returned an API Error: {exception}")
-        pass
-
     elif isinstance(exception, openai.error.RateLimitError):
-        print(f"OpenAI API returned an API Error: {exception}")
+        LOGGER.warning(f"Rate Limit Error: {exception}")
         pass
+    else:
+        raise exception
 
 
 class OpenAiModel(Model):
@@ -46,10 +45,10 @@ class OpenAiModel(Model):
     COMPLETION_ONLY = ["gpt-3.5-turbo-instruct"]
 
     def __init__(
-        self,
-        api_key: str = "",
-        model_name: str = "gpt-3.5-turbo",
-        temperature=0.0,
+            self,
+            api_key: str = "",
+            model_name: str = "gpt-3.5-turbo",
+            temperature=0.0,
     ):
         """
         Initialize the OpenAI model.
@@ -92,15 +91,20 @@ class OpenAiModel(Model):
             NotImplementedError:
             If the content type is not supported (not str or List[str]).
         """
+        try:
+            if isinstance(messages, str):
+                messages = [messages]
 
-        if isinstance(messages, str):
-            messages = [messages]
+            if isinstance(messages, list):
+                return self._predict(messages=messages)
 
-        if isinstance(messages, list):
-            return self._predict(messages=messages)
-        else:
-            raise NotImplementedError(
-                "unknown type! Needs to be str or List[str]!",
+            else:
+                raise NotImplementedError(
+                    "unknown type! Needs to be str or List[str]!",
+                )
+        except Exception as exception:
+            raise ModelPredictionError(
+                f"OpenAI Model prediction Error: {exception}"
             )
 
     def _predict(self, messages: List[str]) -> ResponseList:
@@ -114,7 +118,6 @@ class OpenAiModel(Model):
             Any: Predicted output based on the provided prompts.
 
         """
-
         if len(messages) > 1:
             raise ValueError("Batch messages are not supported!")
 
@@ -122,13 +125,16 @@ class OpenAiModel(Model):
             api_response = self._call_completion_api(prompt=messages)
         else:
             messages = self.build_chat_messages(messages)
-            api_response = self._call_chat_completions_api(messages=messages)
+            api_response = self._call_chat_completions_api(
+                messages=messages)
 
-        return ResponseList.from_responses([_build_response(api_response)])
+        return ResponseList.from_responses(
+            [_build_response(message=messages[0], api_response=api_response)])
 
     @retry(
         wait=wait_random_exponential(min=1, max=60),
         stop=stop_after_attempt(6),
+        retry=retry_if_exception_type(openai.error.RateLimitError)
     )
     def _call_completion_api(self, prompt: str):
         """
@@ -150,11 +156,12 @@ class OpenAiModel(Model):
                 prompt=prompt,
             )
         except Exception as exception:
-            _handle_exception(exception)
+            _handle_open_ai_exception(exception)
 
     @retry(
         wait=wait_random_exponential(min=1, max=60),
         stop=stop_after_attempt(6),
+        retry=retry_if_exception_type(openai.error.RateLimitError)
     )
     def _call_chat_completions_api(self, messages: List[str]):
         """
@@ -178,7 +185,7 @@ class OpenAiModel(Model):
                 temperature=self._temperature,
             )
         except Exception as exception:
-            _handle_exception(exception)
+            _handle_open_ai_exception(exception)
 
     def add_system_prompt(self, content: str):
         """

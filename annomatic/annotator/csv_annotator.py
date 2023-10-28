@@ -197,7 +197,7 @@ class CsvAnnotator(BaseAnnotator):
                     output_data.extend(entries)
 
                 LOGGER.info(
-                    f"Annotated...{(idx + 1) * self.batch_size} "
+                    f"Annotated... {(idx + 1) * self.batch_size} "
                     f"out of {self._input.shape[0]}",
                 )
 
@@ -261,9 +261,10 @@ class CsvAnnotator(BaseAnnotator):
                 )
             return annotated_data
 
-        except Exception as prediction_error:
+        except Exception as exception:
             # TODO introduce a custom exception
-            LOGGER.error(f"Prediction error: {str(prediction_error)}")
+            LOGGER.error(f"Prediction error: {str(exception)}")
+
             return None
 
     def _model_predict(self, messages: List[str]) -> ResponseList:

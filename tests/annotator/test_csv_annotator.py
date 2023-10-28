@@ -17,12 +17,12 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
     """
 
     def __init__(
-        self,
-        model_lib: str = "",
-        model_name: str = " ",
-        model_args: Optional[dict] = None,
-        out_path: str = "",
-        **kwargs,
+            self,
+            model_lib: str = "",
+            model_name: str = " ",
+            model_args: Optional[dict] = None,
+            out_path: str = "",
+            **kwargs,
     ):
         super().__init__(model_name, model_lib, model_args, out_path, **kwargs)
 
@@ -58,12 +58,12 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
     """
 
     def __init__(
-        self,
-        model_lib: str,
-        model_name: str = " ",
-        model_args: Optional[dict] = None,
-        out_path: str = "",
-        **kwargs,
+            self,
+            model_lib: str,
+            model_name: str = " ",
+            model_args: Optional[dict] = None,
+            out_path: str = "",
+            **kwargs,
     ):
         super().__init__(model_name, model_lib, model_args, out_path, **kwargs)
 
@@ -141,13 +141,13 @@ def test_set_prompt_prompt():
 def test_OpenAIAnnotation_no_exception():
     # delete file if exists
     try:
-        os.remove("tests/data/output.csv")
+        os.remove("./tests/data/output.csv")
     except OSError:
         pass
 
     annotator = FakeOpenAiCSVAnnotator(
         model_name="model",
-        out_path="tests/data/output.csv",
+        out_path="./tests/data/output.csv",
     )
     template = (
         "Instruction: '{input}'"
@@ -160,26 +160,26 @@ def test_OpenAIAnnotation_no_exception():
     prompt = Prompt(content=template)
     annotator.set_prompt(prompt=prompt)
     annotator.set_data(
-        data="tests/data/input.csv",
+        data="./tests/data/input.csv",
         in_col="input",
     )
 
     annotator.annotate()
 
-    assert os.path.exists("tests/data/output.csv")
+    assert os.path.exists("./tests/data/output.csv")
 
 
 def test_Huggingface_no_exception():
     # delete file if exists
     try:
-        os.remove("/home/sinix/dev/annomatic/tests/data/output.csv")
+        os.remove("./tests/data/output.csv")
     except OSError:
         pass
 
     annotator = FakeHuggingFaceCsvAnnotator(
         model_name="model",
         model_lib="hf",
-        out_path="/home/sinix/dev/annomatic/tests/data/output.csv",
+        out_path="./tests/data/output.csv",
     )
     template = (
         "Instruction: '{input}'"
@@ -192,9 +192,9 @@ def test_Huggingface_no_exception():
     prompt = Prompt(content=template)
     annotator.set_prompt(prompt=prompt)
     annotator.set_data(
-        data="/home/sinix/dev/annomatic/tests/data/input.csv",
+        data="./tests/data/input.csv",
         in_col="input",
     )
 
     annotator.annotate()
-    assert os.path.exists("/home/sinix/dev/annomatic/tests/data/output.csv")
+    assert os.path.exists("./tests/data/output.csv")

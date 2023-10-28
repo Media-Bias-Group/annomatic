@@ -93,3 +93,10 @@ class Model(ABC):
         Predict the given messages. Message can be of type str or List[str]
         # TODO introduce List[List[str]] for multiple conversations
         """
+
+
+class ModelPredictionError(Exception):
+    """Custom exception for model prediction errors."""
+
+    def __init__(self, message):
+        super().__init__(message)
