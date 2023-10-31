@@ -1,7 +1,7 @@
-import re
 from abc import ABC, abstractmethod
-
 from typing import Any, List
+
+from annomatic.prompt.utils import _template_variables
 
 
 class BaseTemplater(ABC):
@@ -41,6 +41,8 @@ class FstringTemplater(BaseTemplater):
     VARIABLE_REGEX = r"\{(\w+)\}"
     """Regex for finding all variables"""
 
+    TYPE = "fString"
+
     def __init__(self, template: str):
         self._template = template
         self._variables = []
@@ -51,7 +53,7 @@ class FstringTemplater(BaseTemplater):
         _variables and returns it.
         """
         if not self._variables:
-            self._variables = re.findall(self.VARIABLE_REGEX, self._template)
+            self._variables = _template_variables(self._template, self.TYPE)
         return self._variables
 
     def get_variables(self) -> List[str]:

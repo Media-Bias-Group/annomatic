@@ -1,8 +1,8 @@
 import logging
 from abc import ABC, abstractmethod
+from typing import Any
 
 import pandas as pd
-from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 

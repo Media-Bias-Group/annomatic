@@ -1,5 +1,4 @@
 import logging
-
 from typing import List
 
 from annomatic.llm.base import Response, ResponseList

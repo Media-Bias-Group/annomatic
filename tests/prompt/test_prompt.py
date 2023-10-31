@@ -119,7 +119,7 @@ def test_basic_prompt_multiple_inputs():
     assert result == res
 
 
-def test_get_variable():
+def test_variables():
     template_input = "Instruction: '{input}'"
 
     template_out = "Instruction: '{output}'"
