@@ -28,6 +28,15 @@ optional = true
 [tool.poetry.group.huggingface.dependencies]
 transformers = "^4.34.0"
 
+# Vllm
+[tool.poetry.group.vllm]
+optional = true
+
+[tool.poetry.group.vllm.dependencies]
+vllm = "^0.2.1.post1"
+
+
+
 # config for pre-commit
 [tool.black]
 line-length = 79

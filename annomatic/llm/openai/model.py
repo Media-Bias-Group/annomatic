@@ -1,5 +1,4 @@
 import logging
-
 from typing import Any, List, Optional
 
 from annomatic.llm.base import Model, ModelPredictionError, Response, ResponseList
@@ -67,6 +66,7 @@ class OpenAiModel(Model):
         Raises:
             ValueError: If no API key is provided.
         """
+        super().__init__(model_name=model_name)
         if model_name in self.COMPLETION_ONLY:
             LOGGER.info("Warning. Legacy API used!")
 
