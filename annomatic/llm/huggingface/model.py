@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-
 from typing import List, Optional, Union
 
 from annomatic.llm import ResponseList
@@ -22,6 +21,7 @@ class HuggingFaceModel(Model, ABC):
     """
 
     def __init__(self, model_name: str, token_args=None):
+        super().__init__(model_name=model_name)
         if token_args is None:
             token_args = {}
 
@@ -65,6 +65,9 @@ class HuggingFaceModel(Model, ABC):
         else:
             padding = False
 
+        return self._predict(messages=messages, padding=padding)
+
+    def _predict(self, messages, padding):
         model_inputs = self.tokenizer(
             messages,
             padding=padding,

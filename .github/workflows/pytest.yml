@@ -1,7 +1,8 @@
 name: PyTest
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - '**'
   pull_request:
     branches: [ "main" ]
 
@@ -27,5 +28,7 @@ jobs:
         run: poetry install --with openai
       - name: Install huggingface dependencies
         run: poetry install --with huggingface
+      - name: Install huggingface dependencies
+        run: poetry install --with vllm
       - name: Test with pytest
         run: poetry run pytest

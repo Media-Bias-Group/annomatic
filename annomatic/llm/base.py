@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-
 from typing import Any, List, Union
 
 
@@ -86,6 +85,13 @@ class Model(ABC):
     """
     Base Model for LLMs
     """
+
+    @abstractmethod
+    def __init__(self, model_name: str):
+        """
+        Initialize the model.
+        """
+        self.model_name = model_name
 
     @abstractmethod
     def predict(self, messages: List[str]) -> ResponseList:

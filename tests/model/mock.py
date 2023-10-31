@@ -1,8 +1,11 @@
 from typing import List
 
+from vllm import CompletionOutput, RequestOutput
+
 from annomatic.llm.huggingface import HFAutoModelForCausalLM
 from annomatic.llm.huggingface.model import HFAutoModelForSeq2SeqLM
 from annomatic.llm.openai import OpenAiModel
+from annomatic.llm.vllm import VllmModel
 
 TEST_OPEN_AI_RESPONSE_CHAT = {
     "choices": [
@@ -122,3 +125,40 @@ class FakeHFAutoModelForSeq2SeqLM(HFAutoModelForSeq2SeqLM):
             "mocked output4" "mocked output5",
             "mocked output6",
         ]
+
+
+class FakeVllmModel(VllmModel):
+    def __init__(self, model_name: str, model_args=None, param_args=None):
+        self.model = "dummy"
+        self.samplingParams = "Dummy"
+
+    def _call_llm(self, messages: List[str]) -> list[RequestOutput]:
+        common_request_id = "common_request"
+        common_prompt = "This is a common prompt."
+        common_prompt_token_ids = [1, 2, 3, 4]
+        common_prompt_logprobs = None
+        common_finished = True
+
+        requestOutputs = []
+        request_output_1 = RequestOutput(
+            request_id=common_request_id,
+            prompt=common_prompt,
+            prompt_token_ids=common_prompt_token_ids,
+            prompt_logprobs=common_prompt_logprobs,
+            outputs=[
+                CompletionOutput(
+                    index=1,
+                    text="output 1",
+                    token_ids=[101, 102, 103, 104],
+                    cumulative_logprob=0.9,
+                    logprobs=None,
+                    finish_reason="Completed",
+                ),
+                # Add more CompletionOutput instances as needed
+            ],
+            finished=common_finished,
+        )
+
+        requestOutputs.extend([request_output_1] * len(messages))
+
+        return requestOutputs
