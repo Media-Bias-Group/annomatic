@@ -10,6 +10,7 @@ from annomatic.llm.base import Model, ResponseList
 from annomatic.llm.huggingface import HFAutoModelForCausalLM
 from annomatic.llm.huggingface.model import HFAutoModelForSeq2SeqLM
 from annomatic.llm.openai import OpenAiModel
+from annomatic.llm.vllm import VllmModel
 from annomatic.prompt import Prompt
 
 LOGGER = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 class CsvAnnotator(BaseAnnotator):
     """
-    Annotator class for models that stores the output to a csv file.
+    Base annotator class for models that stores the output to a csv file.
 
     Arguments:
         model_name (str): Name of the model.
@@ -28,12 +29,12 @@ class CsvAnnotator(BaseAnnotator):
     """
 
     def __init__(
-        self,
-        model_name: str,
-        model_lib: str,
-        model_args: Optional[dict] = None,
-        out_path: str = "",
-        **kwargs,
+            self,
+            model_name: str,
+            model_lib: str,
+            model_args: Optional[dict] = None,
+            out_path: str = "",
+            **kwargs,
     ):
         """
         Arguments:
@@ -71,10 +72,10 @@ class CsvAnnotator(BaseAnnotator):
         return self.in_col in self._prompt.get_variables()
 
     def set_data(
-        self,
-        data: Union[pd.DataFrame, str],
-        in_col: str = "input",
-        to_kwargs: bool = False,
+            self,
+            data: Union[pd.DataFrame, str],
+            in_col: str = "input",
+            to_kwargs: bool = False,
     ):
         """
         Sets the input data for the annotator.
@@ -139,8 +140,8 @@ class CsvAnnotator(BaseAnnotator):
 
         # if is subclass use dedicated load method
         if (
-            issubclass(self.__class__, CsvAnnotator)
-            and self.__class__ is not CsvAnnotator
+                issubclass(self.__class__, CsvAnnotator)
+                and self.__class__ is not CsvAnnotator
         ):
             super(self.__class__, self)._load_model()
 
@@ -155,10 +156,10 @@ class CsvAnnotator(BaseAnnotator):
         return self.model
 
     def annotate(
-        self,
-        data: Union[pd.DataFrame, str] = None,
-        return_df: bool = False,
-        **kwargs,
+            self,
+            data: Union[pd.DataFrame, str] = None,
+            return_df: bool = False,
+            **kwargs,
     ):
         """
         Annotates the input data and writes the annotated data to the
@@ -203,11 +204,12 @@ class CsvAnnotator(BaseAnnotator):
         LOGGER.info(f"Starting Annotation of {total_rows}")
 
         try:
-            num_chunks = total_rows // self.batch_size
+
+            num_chunks = self._batch_size(total_rows)
             for idx in range(num_chunks):
                 batch = self._input.iloc[
-                    idx * self.batch_size : (idx + 1) * self.batch_size
-                ]
+                        idx * self.batch_size: (idx + 1) * self.batch_size
+                        ]
                 entries = self._annotate_batch(batch, **kwargs)
                 if entries:
                     output_data.extend(entries)
@@ -219,7 +221,7 @@ class CsvAnnotator(BaseAnnotator):
 
             # handle remainder
             if num_chunks * self.batch_size < total_rows:
-                batch = self._input.iloc[num_chunks * self.batch_size :]
+                batch = self._input.iloc[num_chunks * self.batch_size:]
                 entries = self._annotate_batch(batch, **kwargs)
                 if entries:
                     output_data.extend(entries)
@@ -298,6 +300,20 @@ class CsvAnnotator(BaseAnnotator):
 
         return self.model.predict(messages=messages)
 
+    def _batch_size(self, total_rows: int):
+        """
+        Calculates the number of batches.
+
+        If self.batch_size is not set, the whole dataset is used as a batch.
+
+        Args:
+            total_rows: int representing the total number of rows.
+        """
+        if self.batch_size:
+            return total_rows // self.batch_size
+        else:
+            return total_rows
+
 
 class OpenAiCsvAnnotator(CsvAnnotator):
     """
@@ -307,12 +323,12 @@ class OpenAiCsvAnnotator(CsvAnnotator):
     DEFAULT_BATCH_SIZE = 1
 
     def __init__(
-        self,
-        api_key: str = "",
-        model_name: str = "gpt-3.5-turbo",
-        temperature=0.0,
-        model_args: Optional[dict] = None,
-        out_path: str = "",
+            self,
+            api_key: str = "",
+            model_name: str = "gpt-3.5-turbo",
+            temperature=0.0,
+            model_args: Optional[dict] = None,
+            out_path: str = "",
     ):
         """
         Arguments:
@@ -346,7 +362,10 @@ class HFAutoModels(Enum):
 
 class HuggingFaceCsvAnnotator(CsvAnnotator):
     """
-    Annotator class for OpenAI models that use CSV files as input and output.
+    Annotator class for HuggingFace models that use CSV files as output.
+
+    This class can use LLMs loaded by the AutoModelForCausalLM and
+    AutoModelForSeq2SeqLM classes.
     """
 
     DEFAULT_BATCH_SIZE = 5
@@ -361,7 +380,11 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
     ):
         """
         Arguments:
-            model_name: str representing the Name of the OpenAI model.
+            model_name: str representing the Name of the HuggingFace model
+            auto_model: str representing the AutoModel class
+            out_path: str representing the path to the output file
+            model_args: dict representing the model arguments
+            token_args: dict representing the token arguments
         """
         super().__init__(
             model_name=model_name,
@@ -393,3 +416,44 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
                 token_args=self.token_args,
             )
             return self.model
+
+
+class VllmCsvAnnotator(CsvAnnotator):
+    """
+    Annotator class for Vllm models that use CSV files as input and output.
+
+    This class can use LLMs loaded by the VllmModel class.
+    """
+
+    def __init__(
+            self,
+            model_name: str,
+            out_path: str,
+            model_args: Optional[dict] = None,
+            token_args: Optional[dict] = None,
+    ):
+        """
+        Arguments:
+            model_name: str representing the Name of the OpenAI model.
+        """
+        super().__init__(
+            model_name=model_name,
+            model_lib="vllm",
+            model_args=model_args,
+            out_path=out_path,
+        )
+        if token_args is None:
+            self.token_args = {}
+        else:
+            self.token_args = token_args
+
+        # set batch_size to 'None' to use the whole dataset as a batch
+        self.batch_size = None
+
+    def _load_model(self):
+        self.model = VllmModel(
+            model_name=self.model_name,
+            model_args=self.model_args,
+            param_args=self.token_args,
+        )
+        return self.model

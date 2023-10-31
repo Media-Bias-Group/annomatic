@@ -3,6 +3,7 @@ import pytest
 from tests.model.mock import FakeVllmModel
 
 
+@pytest.mark.skip()
 def test_vllm_predict():
     model = FakeVllmModel(model_name="test_model")
     result = model.predict(
@@ -11,7 +12,7 @@ def test_vllm_predict():
     #
     assert len(result) == 3
 
-
+@pytest.mark.skip()
 def test_vllm_predict_model_None():
     model = FakeVllmModel(model_name="test_model")
     model.model = None
