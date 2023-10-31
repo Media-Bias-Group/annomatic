@@ -22,13 +22,17 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           python-version: "3.9.16"
+      - name: install torch
+        run: pip install torch
       - name: Install dependencies
         run: poetry install --with dev
       - name: Install openAI dependencies
         run: poetry install --with openai
       - name: Install huggingface dependencies
         run: poetry install --with huggingface
-      - name: Install huggingface dependencies
+      - name: install torch (for vllm tests)
+        run: pip install torch
+      - name: Install vllm dependencies
         run: poetry install --with vllm
       - name: Test with pytest
         run: poetry run pytest
