@@ -1,8 +1,8 @@
 import logging
-
-import pandas as pd
 from enum import Enum
 from typing import List, Optional, Union
+
+import pandas as pd
 
 from annomatic.annotator.base import BaseAnnotator
 from annomatic.io import CsvInput, CsvOutput
