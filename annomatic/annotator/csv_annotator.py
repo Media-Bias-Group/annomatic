@@ -29,12 +29,13 @@ class CsvAnnotator(BaseAnnotator):
     """
 
     def __init__(
-            self,
-            model_name: str,
-            model_lib: str,
-            model_args: Optional[dict] = None,
-            out_path: str = "",
-            **kwargs,
+        self,
+        model_name: str,
+        model_lib: str,
+        model_args: Optional[dict] = None,
+        batch_size: Optional[int] = None,
+        out_path: str = "",
+        **kwargs,
     ):
         """
         Arguments:
@@ -53,7 +54,7 @@ class CsvAnnotator(BaseAnnotator):
         self.out_path = out_path
         self.to_kwargs = False
         self.kwargs = kwargs
-        self.batch_size = 1
+        self.batch_size = batch_size
 
         # store input as a dataframe
         self._input: Optional[pd.DataFrame] = None
@@ -72,10 +73,10 @@ class CsvAnnotator(BaseAnnotator):
         return self.in_col in self._prompt.get_variables()
 
     def set_data(
-            self,
-            data: Union[pd.DataFrame, str],
-            in_col: str = "input",
-            to_kwargs: bool = False,
+        self,
+        data: Union[pd.DataFrame, str],
+        in_col: str = "input",
+        to_kwargs: bool = False,
     ):
         """
         Sets the input data for the annotator.
@@ -140,8 +141,8 @@ class CsvAnnotator(BaseAnnotator):
 
         # if is subclass use dedicated load method
         if (
-                issubclass(self.__class__, CsvAnnotator)
-                and self.__class__ is not CsvAnnotator
+            issubclass(self.__class__, CsvAnnotator)
+            and self.__class__ is not CsvAnnotator
         ):
             super(self.__class__, self)._load_model()
 
@@ -156,10 +157,10 @@ class CsvAnnotator(BaseAnnotator):
         return self.model
 
     def annotate(
-            self,
-            data: Union[pd.DataFrame, str] = None,
-            return_df: bool = False,
-            **kwargs,
+        self,
+        data: Union[pd.DataFrame, str] = None,
+        return_df: bool = False,
+        **kwargs,
     ):
         """
         Annotates the input data and writes the annotated data to the
@@ -187,6 +188,7 @@ class CsvAnnotator(BaseAnnotator):
         if self.model is None:
             self._load_model()
 
+        # TODO: add return_df if True return the annotated data as a DataFrame
         self._annotate(**kwargs)
 
     def _annotate(self, **kwargs):
@@ -204,12 +206,11 @@ class CsvAnnotator(BaseAnnotator):
         LOGGER.info(f"Starting Annotation of {total_rows}")
 
         try:
-
-            num_chunks = self._batch_size(total_rows)
-            for idx in range(num_chunks):
+            num_batch = total_rows // self.batch_size
+            for idx in range(num_batch):
                 batch = self._input.iloc[
-                        idx * self.batch_size: (idx + 1) * self.batch_size
-                        ]
+                    idx * self.batch_size : (idx + 1) * self.batch_size
+                ]
                 entries = self._annotate_batch(batch, **kwargs)
                 if entries:
                     output_data.extend(entries)
@@ -219,9 +220,9 @@ class CsvAnnotator(BaseAnnotator):
                     f"out of {self._input.shape[0]}",
                 )
 
-            # handle remainder
-            if num_chunks * self.batch_size < total_rows:
-                batch = self._input.iloc[num_chunks * self.batch_size:]
+            # handle rest of the data
+            if num_batch * self.batch_size < total_rows:
+                batch = self._input.iloc[num_batch * self.batch_size :]
                 entries = self._annotate_batch(batch, **kwargs)
                 if entries:
                     output_data.extend(entries)
@@ -300,7 +301,7 @@ class CsvAnnotator(BaseAnnotator):
 
         return self.model.predict(messages=messages)
 
-    def _batch_size(self, total_rows: int):
+    def _num_chunks(self, total_rows: int):
         """
         Calculates the number of batches.
 
@@ -312,7 +313,9 @@ class CsvAnnotator(BaseAnnotator):
         if self.batch_size:
             return total_rows // self.batch_size
         else:
-            return total_rows
+            # if no batch size is set, use the whole dataset as a batch
+            self.batch_size = total_rows
+            return 1
 
 
 class OpenAiCsvAnnotator(CsvAnnotator):
@@ -323,12 +326,13 @@ class OpenAiCsvAnnotator(CsvAnnotator):
     DEFAULT_BATCH_SIZE = 1
 
     def __init__(
-            self,
-            api_key: str = "",
-            model_name: str = "gpt-3.5-turbo",
-            temperature=0.0,
-            model_args: Optional[dict] = None,
-            out_path: str = "",
+        self,
+        api_key: str = "",
+        model_name: str = "gpt-3.5-turbo",
+        temperature=0.0,
+        model_args: Optional[dict] = None,
+        batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
+        out_path: str = "",
     ):
         """
         Arguments:
@@ -341,6 +345,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
             model_lib="openai",
             model_args=model_args,
             out_path=out_path,
+            batch_size=batch_size,
         )
         self.api_key = api_key
         self.temperature = temperature
@@ -376,6 +381,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         out_path: str,
         model_args: Optional[dict] = None,
         token_args: Optional[dict] = None,
+        batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         auto_model: str = "AutoModelForCausalLM",
     ):
         """
@@ -391,13 +397,13 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             model_lib="huggingface",
             model_args=model_args,
             out_path=out_path,
+            batch_size=batch_size,
         )
         if token_args is None:
             self.token_args = {}
         else:
             self.token_args = token_args
 
-        self.batch_size = HuggingFaceCsvAnnotator.DEFAULT_BATCH_SIZE
         self.auto_model = auto_model
 
     def _load_model(self):
@@ -426,11 +432,12 @@ class VllmCsvAnnotator(CsvAnnotator):
     """
 
     def __init__(
-            self,
-            model_name: str,
-            out_path: str,
-            model_args: Optional[dict] = None,
-            token_args: Optional[dict] = None,
+        self,
+        model_name: str,
+        out_path: str,
+        model_args: Optional[dict] = None,
+        token_args: Optional[dict] = None,
+        batch_size: Optional[int] = None,
     ):
         """
         Arguments:
@@ -441,14 +448,12 @@ class VllmCsvAnnotator(CsvAnnotator):
             model_lib="vllm",
             model_args=model_args,
             out_path=out_path,
+            batch_size=batch_size,
         )
         if token_args is None:
             self.token_args = {}
         else:
             self.token_args = token_args
-
-        # set batch_size to 'None' to use the whole dataset as a batch
-        self.batch_size = None
 
     def _load_model(self):
         self.model = VllmModel(
