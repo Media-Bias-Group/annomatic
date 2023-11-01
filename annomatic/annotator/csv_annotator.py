@@ -206,8 +206,8 @@ class CsvAnnotator(BaseAnnotator):
         LOGGER.info(f"Starting Annotation of {total_rows}")
 
         try:
-            num_batch = total_rows // self.batch_size
-            for idx in range(num_batch):
+            num_batches = self._num_batches(total_rows)
+            for idx in range(num_batches):
                 batch = self._input.iloc[
                     idx * self.batch_size : (idx + 1) * self.batch_size
                 ]
@@ -221,8 +221,8 @@ class CsvAnnotator(BaseAnnotator):
                 )
 
             # handle rest of the data
-            if num_batch * self.batch_size < total_rows:
-                batch = self._input.iloc[num_batch * self.batch_size :]
+            if num_batches * self.batch_size < total_rows:
+                batch = self._input.iloc[num_batches * self.batch_size :]
                 entries = self._annotate_batch(batch, **kwargs)
                 if entries:
                     output_data.extend(entries)
@@ -301,7 +301,7 @@ class CsvAnnotator(BaseAnnotator):
 
         return self.model.predict(messages=messages)
 
-    def _num_chunks(self, total_rows: int):
+    def _num_batches(self, total_rows: int):
         """
         Calculates the number of batches.
 
