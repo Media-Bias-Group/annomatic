@@ -7,10 +7,6 @@ import pandas as pd
 from annomatic.annotator.base import BaseAnnotator
 from annomatic.io import CsvInput, CsvOutput
 from annomatic.llm.base import Model, ResponseList
-from annomatic.llm.huggingface import HFAutoModelForCausalLM
-from annomatic.llm.huggingface.model import HFAutoModelForSeq2SeqLM
-from annomatic.llm.openai import OpenAiModel
-from annomatic.llm.vllm import VllmModel
 from annomatic.prompt import Prompt
 
 LOGGER = logging.getLogger(__name__)
@@ -352,6 +348,8 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         self.batch_size = OpenAiCsvAnnotator.DEFAULT_BATCH_SIZE
 
     def _load_model(self):
+        from annomatic.llm.openai import OpenAiModel
+
         self.model = OpenAiModel(
             model_name=self.model_name,
             api_key=self.api_key,
@@ -407,7 +405,11 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         self.auto_model = auto_model
 
     def _load_model(self):
+        # lazy import to avoid circular imports
+
         if self.auto_model == "AutoModelForCausalLM":
+            from annomatic.llm.huggingface import HFAutoModelForCausalLM
+
             self.model = HFAutoModelForCausalLM(
                 model_name=self.model_name,
                 model_args=self.model_args,
@@ -416,6 +418,8 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             return self.model
 
         elif self.auto_model == "AutoModelForSeq2SeqLM":
+            from annomatic.llm.huggingface.model import HFAutoModelForSeq2SeqLM
+
             self.model = HFAutoModelForSeq2SeqLM(
                 model_name=self.model_name,
                 model_args=self.model_args,
@@ -456,6 +460,9 @@ class VllmCsvAnnotator(CsvAnnotator):
             self.token_args = token_args
 
     def _load_model(self):
+        # lazy import to avoid circular imports
+        from annomatic.llm.vllm import VllmModel
+
         self.model = VllmModel(
             model_name=self.model_name,
             model_args=self.model_args,
