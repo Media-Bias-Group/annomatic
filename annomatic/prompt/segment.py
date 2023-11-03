@@ -104,30 +104,35 @@ class LabelTemplateSegment(PromptSegment):
     LAST_SEPARATOR = " or "
     """Separator between last two labels"""
 
-    def __init__(self, template: str, label_var: str = "label"):
+    def __init__(self, template: str, label_variable: str = "label"):
         self._template = FstringTemplater(template)
-        self._label_var = label_var
+        self._label_variable = label_variable
+
+    @property
+    def label_variable(self):
+        return self._label_variable
 
     def get_variables(self) -> List[str]:
         return self._template.get_variables()
 
     def to_string(self, **kwargs: Any) -> str:
-        if self._label_var in kwargs:
-            labels = kwargs[self._label_var]
+        if self._label_variable in kwargs:
+            labels = kwargs[self._label_variable]
             if isinstance(labels, list) and labels:
                 if len(labels) == 1:
-                    kwargs[self._label_var] = labels[0]
+                    kwargs[self._label_variable] = labels[0]
                     return self._template.parse(**kwargs)
                 else:
                     label_string = self.SEPARATOR.join(labels[:-1])
                     label_string += self.LAST_SEPARATOR + labels[-1]
-                    kwargs[self._label_var] = label_string
+                    kwargs[self._label_variable] = label_string
                     return self._template.parse(**kwargs)
             elif isinstance(labels, str):
                 return self._template.parse(**kwargs)
             else:
                 raise ValueError(
-                    f"Invalid value for labels variable: {self._label_var}",
+                    f"Invalid value for labels variable: "
+                    f"{self._label_variable}",
                 )
         else:
             return self._template.parse(**kwargs)

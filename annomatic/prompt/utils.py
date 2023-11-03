@@ -1,3 +1,7 @@
+import re
+from typing import List
+
+
 def check_template_format(template: str, format_type: str = "fString") -> bool:
     """
      Checks if the given template string is in a valid format.
@@ -36,3 +40,26 @@ def is_f_string_format(template: str) -> bool:
             return False
     except AssertionError:
         return False
+
+
+def _template_variables(
+    template: str,
+    template_format: str,
+) -> List[str]:
+    """
+    Extract variables from a template string.
+
+    Args:
+        template: A string containing a template.
+        pattern: A regex pattern to be used for extracting variables.
+
+    Returns:
+        A list of variable names found in the template.
+    """
+
+    if template_format == "fString":
+        pattern = r"\{(\w+)\}"
+    else:
+        raise NotImplementedError(f"Format {format} not implemented.")
+
+    return re.findall(pattern, template)

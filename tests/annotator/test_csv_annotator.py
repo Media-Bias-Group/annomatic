@@ -20,7 +20,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
 
     def __init__(
         self,
-        model_lib: str = "",
+        model_lib: str = " ",
         model_name: str = " ",
         model_args: Optional[dict] = None,
         batch_size: Optional[int] = 5,
@@ -56,7 +56,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
         """
         Mocking the model loading
         """
-        self.model = FakeOpenAiModel(model_name=self.model_name)
+        self._model = FakeOpenAiModel(model_name=self.model_name)
 
 
 class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
@@ -74,6 +74,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
         model_args: Optional[dict] = None,
         batch_size: Optional[int] = 5,
         out_path: str = "",
+        labels: Optional[list] = None,
         **kwargs,
     ):
         super().__init__(
@@ -82,6 +83,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
             model_args=model_args,
             out_path=out_path,
             batch_size=batch_size,
+            labels=labels,
             **kwargs,
         )
 
@@ -104,7 +106,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
         """
         Mocking the model loading
         """
-        self.model = FakeHFAutoModelForCausalLM()
+        self._model = FakeHFAutoModelForCausalLM()
 
 
 class FakeVllmCsvAnnotator(VllmCsvAnnotator):
@@ -135,7 +137,7 @@ class FakeVllmCsvAnnotator(VllmCsvAnnotator):
         """
         Mocking the model loading
         """
-        self.model = FakeVllmModel("test_model")
+        self._model = FakeVllmModel("test_model")
 
 
 def test_set_data_csv():
@@ -274,6 +276,7 @@ def test_Huggingface_annotate():
         model_name="model",
         model_lib="hf",
         out_path="./tests/data/output.csv",
+        labels=["BIASED", "NON-BIASED"],
     )
     template = (
         "Instruction: '{input}'"
@@ -412,3 +415,124 @@ def test_vllm_annotate_batch():
     res = annotator._annotate_batch(inp)
 
     assert len(res) == inp.shape[0]
+
+
+def test_parse_label_expect_biased():
+    annotator = FakeOpenAiCSVAnnotator(
+        out_path="./tests/data/output.csv",
+    )
+    annotator._labels = ["BIASED", "NON-BIASED"]
+    res = annotator._parse_label("This text is biased since...", "?")
+
+    assert res == "BIASED"
+
+
+def test_parse_label_expect_non_biased():
+    annotator = FakeOpenAiCSVAnnotator(
+        out_path="./tests/data/output.csv",
+    )
+    annotator._labels = ["BIASED", "NON-BIASED"]
+    # sort done in method
+    annotator._labels.sort(
+        key=lambda x: len(x),
+        reverse=True,
+    )
+
+    res = annotator._parse_label("This text is non-biased since...", "?")
+
+    assert res == "NON-BIASED"
+
+
+def test_parse_label_expect_default():
+    annotator = FakeOpenAiCSVAnnotator(
+        out_path="./tests/data/output.csv",
+    )
+    annotator._labels = ["BIASED", "NON-BIASED"]
+    res = annotator._parse_label("This text is not parseable", "?")
+
+    assert res == "?"
+
+
+def test_soft_parse():
+    df = pd.DataFrame(
+        {
+            "response": [
+                "This is a biased response.",
+                "A non-biased response.",
+                "Another biased statement.",
+                "This sentence is not parseable.",
+            ],
+        },
+    )
+
+    annotator = FakeOpenAiCSVAnnotator(
+        out_path="./tests/data/output.csv",
+    )
+    annotator._labels = ["BIASED", "NON-BIASED"]
+    annotator._soft_parse(df, "response", "label")
+
+    assert df["label"].iloc[0] == "BIASED"
+    assert df["label"].iloc[1] == "NON-BIASED"
+    assert df["label"].iloc[2] == "BIASED"
+    assert df["label"].iloc[3] == "?"
+
+
+def test_validate_labels_only_init():
+    annotator = FakeOpenAiCSVAnnotator(
+        out_path="./tests/data/output.csv",
+        labels=["BIASED", "NON-BIASED"],
+    )
+    annotator._prompt = Prompt("This is a prompt")
+    annotator._validate_labels()
+
+    assert annotator._labels == ["BIASED", "NON-BIASED"]
+
+
+def test_validate_labels_only_prompt():
+    annotator = FakeOpenAiCSVAnnotator(
+        out_path="./tests/data/output.csv",
+    )
+
+    prompt = Prompt()
+    prompt.add_labels_part(
+        content="This is a prompt {labels}",
+        label_var="labels",
+    )
+    annotator._prompt = prompt
+    annotator._validate_labels(labels=["BIASED", "NON-BIASED"])
+
+    assert annotator._labels == ["BIASED", "NON-BIASED"]
+
+
+def test_validate_labels_matching():
+    annotator = FakeOpenAiCSVAnnotator(
+        out_path="./tests/data/output.csv",
+        labels=["BIASED", "NON-BIASED"],
+    )
+
+    prompt = Prompt()
+    prompt.add_labels_part(
+        content="This is a prompt {label}",
+        label_var="label",
+    )
+    annotator._prompt = prompt
+    annotator._validate_labels(label=["BIASED", "NON-BIASED"])
+
+    assert annotator._labels == ["BIASED", "NON-BIASED"]
+
+
+def test_validate_labels_not_matching():
+    annotator = FakeOpenAiCSVAnnotator(
+        out_path="./tests/data/output.csv",
+        labels=["BIASED", "NON-BIASED"],
+    )
+
+    prompt = Prompt()
+    prompt.add_labels_part(
+        content="This is a prompt {label}",
+        label_var="label",
+    )
+    annotator._prompt = prompt
+
+    with pytest.raises(Exception):
+        annotator._validate_labels(label=["BIASED", "Other Label"])

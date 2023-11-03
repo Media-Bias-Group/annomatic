@@ -20,6 +20,9 @@ class CsvAnnotator(BaseAnnotator):
         model_name (str): Name of the model.
         model_lib (str): Name of the model library.
         model_args (dict): Arguments for the model.
+        batch_size (int): Size of the batch.
+        soft_parsing_labels (List[str]): List of labels that should be
+                                         parsed as soft labels.
         out_path (str): Path to the output file.
 
     """
@@ -30,6 +33,7 @@ class CsvAnnotator(BaseAnnotator):
         model_lib: str,
         model_args: Optional[dict] = None,
         batch_size: Optional[int] = None,
+        labels: Optional[List[str]] = None,
         out_path: str = "",
         **kwargs,
     ):
@@ -52,13 +56,15 @@ class CsvAnnotator(BaseAnnotator):
         self.kwargs = kwargs
         self.batch_size = batch_size
 
+        self._labels = labels
+
         # store input as a dataframe
         self._input: Optional[pd.DataFrame] = None
         self._output_handler: Optional[CsvOutput] = CsvOutput(out_path)
 
         self._prompt: Optional[Prompt] = None
         self.in_col: Optional[str] = None
-        self.model: Optional[Model] = None  # lazy loaded with first annotation
+        self._model: Optional[Model] = None
         self.model_lib = model_lib
 
     def _validate_input_column(self) -> bool:
@@ -67,6 +73,24 @@ class CsvAnnotator(BaseAnnotator):
             return True
 
         return self.in_col in self._prompt.get_variables()
+
+    def _validate_labels(self, **kwargs):
+        if self._labels is None:
+            prompt_labels = self._prompt.get_label_variable()
+            labels_from_kwargs = kwargs.get(prompt_labels, None)
+
+            if labels_from_kwargs is not None:
+                self._labels = labels_from_kwargs
+        else:
+            prompt_labels = self._prompt.get_label_variable()
+            labels_from_kwargs = kwargs.get(prompt_labels)
+
+            if labels_from_kwargs is not None and set(self._labels) != set(
+                labels_from_kwargs,
+            ):
+                raise ValueError(
+                    "Labels in prompt and Annotator do not match!",
+                )
 
     def set_data(
         self,
@@ -132,8 +156,8 @@ class CsvAnnotator(BaseAnnotator):
             ValueError: If the model library is not supported.
         """
         # if model is already loaded, just return it
-        if self.model is not None:
-            return self.model
+        if self._model is not None:
+            return self._model
 
         # if is subclass use dedicated load method
         if (
@@ -142,15 +166,13 @@ class CsvAnnotator(BaseAnnotator):
         ):
             super(self.__class__, self)._load_model()
 
-        # TODO impl general load method
-
         else:
             # TODO own exception
             raise ValueError(
                 f"Model library {self.model_lib} is not supported!",
             )
 
-        return self.model
+        return self._model
 
     def annotate(
         self,
@@ -178,10 +200,11 @@ class CsvAnnotator(BaseAnnotator):
             )
 
         if self._prompt is None:
-            # TODO: add a default prompt(s)
             self.set_prompt(prompt=kwargs.get("prompt", None))
 
-        if self.model is None:
+        self._validate_labels(**kwargs)
+
+        if self._model is None:
             self._load_model()
 
         # TODO: add return_df if True return the annotated data as a DataFrame
@@ -230,12 +253,49 @@ class CsvAnnotator(BaseAnnotator):
         LOGGER.info("Annotation done!")
         LOGGER.info(f"Successfully annotated {len(output_data)} rows.")
 
-        # Write the annotated data to the output CSV file
         try:
             output_df = pd.DataFrame(output_data)
+
+            # if labels are known perform soft parsing
+            if self._labels:
+                # ensure that labels that include are tested first
+                self._soft_parse(
+                    df=output_df,
+                    in_col="response",
+                    parsed_col="label",
+                )
+
             self._output_handler.write(output_df)
         except Exception as write_error:
             LOGGER.error(f"Output writing error: {str(write_error)}")
+
+    def _soft_parse(
+        self,
+        df: pd.DataFrame,
+        in_col: str,
+        parsed_col: str,
+    ) -> pd.DataFrame:
+        if self._labels is None:
+            raise ValueError("Labels are not set!")
+
+        self._labels.sort(key=lambda x: len(x), reverse=True)
+        df[parsed_col] = df[in_col].apply(
+            lambda x: self._parse_label(x),
+        )
+        df[parsed_col].fillna("?", inplace=True)
+
+        return df
+
+    def _parse_label(self, response: str, default_label: str = "?") -> str:
+        if self._labels is None:
+            raise ValueError("Labels are not set!")
+
+        response_lower = response.lower()
+        for label in self._labels:
+            if label.lower() in response_lower:
+                return label
+
+        return default_label
 
     def _annotate_batch(self, batch: pd.DataFrame, **kwargs) -> List[dict]:
         """
@@ -250,7 +310,7 @@ class CsvAnnotator(BaseAnnotator):
             List[dict]: a list of dicts containing the annotated data
         """
 
-        if self.model is None or self._prompt is None:
+        if self._model is None or self._prompt is None:
             raise ValueError(
                 "Model or prompt is not set! "
                 "Please call set_data and set_prompt before annotate.",
@@ -269,7 +329,7 @@ class CsvAnnotator(BaseAnnotator):
                 annotated_data.append(
                     {
                         self.in_col: batch.iloc[idx][str(self.in_col)],
-                        "label": response.answer,
+                        "response": response.answer,
                         "raw_data": response.data,
                         "query": response.query,
                     },
@@ -279,7 +339,6 @@ class CsvAnnotator(BaseAnnotator):
         except Exception as exception:
             # TODO introduce a custom exception
             LOGGER.error(f"Prediction error: {str(exception)}")
-
             return []
 
     def _model_predict(self, messages: List[str]) -> ResponseList:
@@ -292,10 +351,10 @@ class CsvAnnotator(BaseAnnotator):
         Returns:
             ResponseList: an object containing the Responses.
         """
-        if self.model is None:
+        if self._model is None:
             raise ValueError("Model is not initialized!")
 
-        return self.model.predict(messages=messages)
+        return self._model.predict(messages=messages)
 
     def _num_batches(self, total_rows: int):
         """
@@ -405,8 +464,6 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         self.auto_model = auto_model
 
     def _load_model(self):
-        # lazy import to avoid circular imports
-
         if self.auto_model == "AutoModelForCausalLM":
             from annomatic.llm.huggingface import HFAutoModelForCausalLM
 
@@ -418,7 +475,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             return self.model
 
         elif self.auto_model == "AutoModelForSeq2SeqLM":
-            from annomatic.llm.huggingface.model import HFAutoModelForSeq2SeqLM
+            from annomatic.llm.huggingface import HFAutoModelForSeq2SeqLM
 
             self.model = HFAutoModelForSeq2SeqLM(
                 model_name=self.model_name,

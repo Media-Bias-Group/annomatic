@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 from annomatic.prompt.segment import (
     LabelTemplateSegment,
@@ -7,7 +7,7 @@ from annomatic.prompt.segment import (
     PromptSegment,
     PromptTemplateSegment,
 )
-from annomatic.prompt.utils import check_template_format
+from annomatic.prompt.utils import _template_variables, check_template_format
 
 
 class BasePrompt(ABC):
@@ -79,9 +79,13 @@ class Prompt(BasePrompt):
 
     """
 
-    def __init__(self, content: Optional[str] = None):
+    def __init__(
+        self,
+        content: Optional[str] = None,
+        template_format: str = "fString",
+    ):
         super().__init__()
-        self._variables: List[str] = []
+        self._template_format = template_format
 
         if content is not None:
             self.add_part(content)
@@ -99,6 +103,14 @@ class Prompt(BasePrompt):
             for var in segment.get_variables()
         ]
 
+    def get_label_variable(self) -> Union[str, None]:
+        for segment in self._segments:
+            if isinstance(segment, LabelTemplateSegment):
+                return segment.label_variable
+
+        # If no label variable is found, return None
+        return None
+
     def add_part(self, content: str):
         """
         Adds the given new content as a new part of the Prompt.
@@ -108,7 +120,7 @@ class Prompt(BasePrompt):
         Args:
             string containing the prompt
         """
-        if check_template_format(content):
+        if check_template_format(content, self._template_format):
             self._segments.append(PromptTemplateSegment(template=content))
         else:
             self._segments.append(PromptPlainSegment(content=content))
@@ -122,10 +134,19 @@ class Prompt(BasePrompt):
         Args:
             string containing the prompt
         """
-        if check_template_format(content):
-            # todo find var out of template
-            self._segments.append(
-                LabelTemplateSegment(template=content, label_var=label_var),
+
+        if label_var not in _template_variables(
+            content,
+            self._template_format,
+        ):
+            raise ValueError(
+                f"Label variable '{label_var}' not in template '{content}'",
             )
-        else:
-            self._segments.append(PromptPlainSegment(content=content))
+
+        if check_template_format(content, self._template_format):
+            self._segments.append(
+                LabelTemplateSegment(
+                    template=content,
+                    label_variable=label_var,
+                ),
+            )
