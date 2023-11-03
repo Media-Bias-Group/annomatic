@@ -12,14 +12,19 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.9", "3.10", "3.11" ]
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python 3.9
+      - name: Set up Python  ${{ matrix.python-version }}
         uses: actions/setup-python@v3
         with:
-          python-version: "3.9.16"
+          python-version:  ${{ matrix.python-version }}
           cache: 'pip'
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -U -r requirements.txt
       - name: Test with pytest
         run: pytest
