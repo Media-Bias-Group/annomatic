@@ -1,17 +1,12 @@
-# Requirements for annomatic
-python>=3.9,<3.11
 pandas~=2.1.1
 
 # Requirements for development
 pytest~=7.4.2
 pre-commit~=3.4.0
-
 # Requirements for OpenAI (optional)
 openai~=0.28.1
 tenacity~=8.2.3
-
 # Requirements for HuggingFace (optional)
 transformers~=4.34.0
-
 # Requirements for Vllm (optional)
 vllm~=0.2.1.post1
