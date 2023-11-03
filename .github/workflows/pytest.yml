@@ -14,22 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Use Python with Poetry
-        uses: abatilo/actions-poetry@v2
-        with:
-          python-version: "3.9.16"
       - name: Set up Python 3.9
         uses: actions/setup-python@v3
         with:
           python-version: "3.9.16"
-          cache: 'poetry'
+          cache: 'pip'
       - name: Install dependencies
-        run: poetry install --with dev
-      - name: Install openAI dependencies
-        run: poetry install --with openai
-      - name: Install huggingface dependencies
-        run: poetry install --with huggingface
-      - name: Install vllm dependencies
-        run: pip install vllm
+        run: pip install -r requirements.txt
       - name: Test with pytest
-        run: poetry run pytest
+        run: pytest
