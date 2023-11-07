@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
@@ -20,23 +20,35 @@ class VllmModel(Model):
     A model that uses the vLLM library.
     """
 
-    def __init__(self, model_name: str, model_args=None, param_args=None):
+    def __init__(
+        self,
+        model_name: str,
+        model_args: Optional[dict] = None,
+        generation_args: Optional[dict] = None,
+    ):
         super().__init__(model_name=model_name)
         if model_args is None:
             model_args = {}
-        if param_args is None:
-            param_args = {}
+        if generation_args is None:
+            generation_args = {}
 
         self.model = LLM(model_name, **model_args)
-        self.samplingParams = SamplingParams(**param_args)
+        self.samplingParams = SamplingParams(**generation_args)
 
-    def predict(self, messages: List[str]) -> ResponseList:
+    def predict(
+        self,
+        messages: List[str],
+        generation_args: Optional[dict] = None,
+        tokenization_args: Optional[dict] = None,
+    ) -> ResponseList:
         """
         Predicts the output of the model for the given messages. This method
         also contains validation logic.
 
         Arguments:
             messages: list of messages to predict
+            generation_args: Optional arguments for the generation.
+            tokenization_args: Optional arguments for the tokenization.
 
         Returns:
             ResponseList: list of responses

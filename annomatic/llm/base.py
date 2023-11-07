@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
 
 class Response:
@@ -97,7 +97,6 @@ class Model(ABC):
     def predict(self, messages: List[str]) -> ResponseList:
         """
         Predict the given messages. Message can be of type str or List[str]
-        # TODO introduce List[List[str]] for multiple conversations
         """
 
 

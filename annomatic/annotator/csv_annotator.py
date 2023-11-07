@@ -470,7 +470,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             self._model = HFAutoModelForCausalLM(
                 model_name=self.model_name,
                 model_args=self.model_args,
-                token_args=self.token_args,
+                tokenizer_args=self.token_args,
             )
             return self._model
 
@@ -480,7 +480,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             self._model = HFAutoModelForSeq2SeqLM(
                 model_name=self.model_name,
                 model_args=self.model_args,
-                token_args=self.token_args,
+                tokenizer_args=self.token_args,
             )
             return self._model
 

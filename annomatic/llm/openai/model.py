@@ -51,7 +51,7 @@ class OpenAiModel(Model):
         self,
         api_key: str = "",
         model_name: str = "gpt-3.5-turbo",
-        temperature=0.0,
+        generation_args: Optional[dict] = None,
     ):
         """
         Initialize the OpenAI model.
@@ -67,12 +67,16 @@ class OpenAiModel(Model):
             ValueError: If no API key is provided.
         """
         super().__init__(model_name=model_name)
+        if generation_args is None:
+            generation_args = {}
+        self.generation_args = generation_args
+
         if model_name in self.COMPLETION_ONLY:
             LOGGER.info("Warning. Legacy API used!")
 
         self._model = valid_model(model_name=model_name)
-        self._temperature: int = temperature
         self.system_prompt: Optional[dict[str, str]] = None
+
         if api_key == "":
             raise ValueError("No OPEN AI key given!")
 
@@ -188,7 +192,7 @@ class OpenAiModel(Model):
             return openai.ChatCompletion.create(
                 model=self._model,
                 messages=messages,
-                temperature=self._temperature,
+                **self.generation_args,
             )
         except Exception as exception:
             _handle_open_ai_exception(exception)

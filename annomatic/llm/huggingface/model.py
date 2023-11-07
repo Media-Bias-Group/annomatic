@@ -5,8 +5,7 @@ from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
 
 try:
-    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, \
-        AutoTokenizer
+    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with huggingface" before using this model!'
@@ -21,14 +20,28 @@ class HuggingFaceModel(Model, ABC):
     Base class for all HuggingFace models.
     """
 
-    def __init__(self, model_name: str, token_args=None):
+    def __init__(
+        self,
+        model_name: str,
+        tokenizer_args: Optional[dict] = None,
+        generation_args: Optional[dict] = None,
+        tokenization_args: Optional[dict] = None,
+    ):
         super().__init__(model_name=model_name)
-        if token_args is None:
-            token_args = {}
+        if generation_args is None:
+            generation_args = {}
+        if tokenization_args is None:
+            tokenization_args = {}
+
+        self.generation_args = generation_args
+        self.tokenization_args = tokenization_args
+
+        if tokenizer_args is None:
+            tokenizer_args = {}
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
-            **token_args,
+            **tokenizer_args,
         )
         self.model: Optional[
             Union[AutoModelForCausalLM, AutoModelForSeq2SeqLM]
@@ -66,14 +79,17 @@ class HuggingFaceModel(Model, ABC):
         else:
             padding = False
 
-        return self._predict(messages=messages, padding=padding)
+        # set necessary tokenization args
+        self.tokenization_args["padding"] = padding
+        self.tokenization_args["return_tensors"] = "pt"
+        self.tokenization_args["return_length"] = True
 
-    def _predict(self, messages, padding):
+        return self._predict(messages=messages)
+
+    def _predict(self, messages: List[str]) -> ResponseList:
         model_inputs = self.tokenizer(
             messages,
-            padding=padding,
-            return_tensors="pt",
-            return_length=True,
+            **self.tokenization_args,
         )
 
         # Pop length from model_inputs, otherwise set length to default (20)
@@ -81,9 +97,12 @@ class HuggingFaceModel(Model, ABC):
         if self.model is not None and self.model.device.type == "cuda":
             model_inputs = model_inputs.to("cuda")
 
+        if "max_length" not in self.generation_args:
+            self.generation_args["max_length"] = input_length * 2
+
         decoded_output = self._call_llm_and_decode(
             model_inputs,
-            2 * input_length,
+            **self.generation_args,
         )
 
         # remove the input from any response (if needed)
@@ -95,9 +114,9 @@ class HuggingFaceModel(Model, ABC):
         )
 
     def _call_llm_and_decode(
-            self,
-            model_inputs,
-            output_length: int,
+        self,
+        model_inputs,
+        generation_args: dict,
     ) -> List[str]:
         """
         makes the library call for the LLM prediction.
@@ -107,7 +126,7 @@ class HuggingFaceModel(Model, ABC):
 
         model_outputs = self.model.generate(
             **model_inputs,
-            max_length=output_length,
+            **generation_args,
         )
         return self.tokenizer.batch_decode(
             model_outputs,
@@ -132,11 +151,11 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
         self,
         model_name: str,
         model_args=None,
-        token_args=None,
+        tokenizer_args=None,
     ):
         super().__init__(
             model_name=model_name,
-            token_args=token_args,
+            tokenizer_args=tokenizer_args,
         )
         if model_args is None:
             model_args = {}
@@ -150,7 +169,7 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
 
     def _format_output(self, decoded_output, messages):
         return [
-            response[len(prefix):].strip()
+            response[len(prefix) :].strip()
             for response, prefix in zip(decoded_output, messages)
         ]
 
@@ -169,14 +188,14 @@ class HFAutoModelForSeq2SeqLM(HuggingFaceModel):
     """
 
     def __init__(
-            self,
-            model_name: str,
-            model_args=None,
-            token_args=None,
+        self,
+        model_name: str,
+        model_args: Optional[dict] = None,
+        tokenizer_args: Optional[dict] = None,
     ):
         super().__init__(
             model_name=model_name,
-            token_args=token_args,
+            tokenizer_args=tokenizer_args,
         )
         if model_args is None:
             model_args = {}
