@@ -1,7 +1,12 @@
 import logging
 from typing import Any, List, Optional
 
-from annomatic.llm.base import Model, ModelPredictionError, Response, ResponseList
+from annomatic.llm.base import (
+    Model,
+    ModelPredictionError,
+    Response,
+    ResponseList,
+)
 from annomatic.llm.openai.utils import _build_response, build_message
 
 LOGGER = logging.getLogger(__name__)
@@ -60,8 +65,6 @@ class OpenAiModel(Model):
             api_key: The API key for accessing the OpenAI API.
             model_name: string representing the selected model.
                 (Default="gpt-3.5-turbo")
-            temperature: The temperature parameter for text generation.
-                (Default=0.0)
 
         Raises:
             ValueError: If no API key is provided.
@@ -164,6 +167,7 @@ class OpenAiModel(Model):
             return openai.Completion.create(
                 model=self._model,
                 prompt=prompt,
+                **self.generation_args,
             )
         except Exception as exception:
             _handle_open_ai_exception(exception)

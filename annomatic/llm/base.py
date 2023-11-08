@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Union
+from typing import Any, List
 
 
 class Response:
@@ -98,6 +98,27 @@ class Model(ABC):
         """
         Predict the given messages. Message can be of type str or List[str]
         """
+
+
+class ModelConfig(ABC):
+    """
+    Base ModelConfig for LLMs
+    """
+
+    @abstractmethod
+    def __init__(self, **kwargs):
+        """
+        Initialize the model config.
+        """
+
+    def to_dict(self):
+        """
+        Convert the model config to a dictionary.
+
+        Values that are None or the default value are not included
+        in the dictionary.
+        """
+        pass
 
 
 class ModelPredictionError(Exception):
