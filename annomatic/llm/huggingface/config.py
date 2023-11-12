@@ -8,10 +8,11 @@ class HuggingFaceConfig(ModelConfig):
     HuggingFaceConfigMixin is a class that holds the configuration for the
     HuggingFace models.
 
-    """
+    The default values are aligned with the default of the generation method
+     of the transformers' library. See 'Generative models' in the
+    https://huggingface.co/transformers/v3.4.0/main_classes/model.html
 
-    def to_dict(self):
-        pass
+    """
 
     def __init__(
         self,
@@ -44,3 +45,15 @@ class HuggingFaceConfig(ModelConfig):
         self.bad_words_ids = bad_words_ids
         self.num_return_sequences = num_return_sequences
         self.kwargs = kwargs
+
+
+class HuggingFaceBenchmarkConfig(HuggingFaceConfig):
+    """
+    HuggingFaceBenchmarkConfig is a class that holds the configuration for
+    the HuggingFace models that use for the benchmarking of the models.
+
+    The temperature is set to 0.2 and do_sample to True.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(temperature=0.2, do_sample=True, **kwargs)

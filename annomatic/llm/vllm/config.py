@@ -4,13 +4,17 @@ from annomatic.llm.base import ModelConfig
 
 
 class VllmConfig(ModelConfig):
+    """
+    VllmConfig is a class is a wrapper for the configuration of the
+    SamplingParams class of the VLLM library.
+    """
+
     def __init__(
         self,
         n: int = 1,
         best_of: Optional[int] = None,
         presence_penalty: float = 0.0,
         frequency_penalty: float = 0.0,
-        repetition_penalty: float = 1.0,
         temperature: float = 1.0,
         top_p: float = 1.0,
         top_k: int = -1,
@@ -24,13 +28,11 @@ class VllmConfig(ModelConfig):
         logprobs: Optional[int] = None,
         prompt_logprobs: Optional[int] = None,
         skip_special_tokens: bool = True,
-        spaces_between_special_tokens: bool = True,
     ) -> None:
         self.n = n
         self.best_of = best_of
         self.presence_penalty = presence_penalty
         self.frequency_penalty = frequency_penalty
-        self.repetition_penalty = repetition_penalty
         self.temperature = temperature
         self.top_p = top_p
         self.top_k = top_k
@@ -44,4 +46,16 @@ class VllmConfig(ModelConfig):
         self.logprobs = logprobs
         self.prompt_logprobs = prompt_logprobs
         self.skip_special_tokens = skip_special_tokens
-        self.spaces_between_special_tokens = spaces_between_special_tokens
+
+
+class VllmBenchmarkConfig(VllmConfig):
+    """
+    VllmBenchmarkConfig is a class that holds the configuration for
+    the HuggingFace models that use for the benchmarking of the models.
+
+    The temperature is set to 0.2 and do_sample to True.
+
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(temperature=0.2, **kwargs)

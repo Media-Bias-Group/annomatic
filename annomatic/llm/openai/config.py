@@ -5,8 +5,12 @@ from annomatic.llm.base import ModelConfig
 
 class OpenAiConfig(ModelConfig):
     """
-    OpenAiConfigMixin is a class that holds the configuration for the
-    OpenAI models.
+    OpenAiConfig is a class that holds the Request body for the
+    OpenAI chat models.
+
+    The default values are aligned with the default values in the
+    https://platform.openai.com/docs/api-reference/chat/create
+
     """
 
     def __init__(
@@ -16,9 +20,10 @@ class OpenAiConfig(ModelConfig):
         max_tokens: Optional[int] = None,
         n: int = 1,
         presence_penalty: float = 0.0,
+        response_format: Optional[str] = None,
         stop: Optional[List[str]] = None,
-        temperature: float = 1.0,
         seed: Optional[int] = None,
+        temperature: float = 1.0,
         top_p: float = 1.0,
         user: Optional[str] = None,
         **kwargs,
@@ -28,9 +33,28 @@ class OpenAiConfig(ModelConfig):
         self.max_tokens = max_tokens
         self.n = n
         self.presence_penalty = presence_penalty
+        self.response_format = response_format
         self.stop = stop
-        self.temperature = temperature
         self.seed = seed
+        self.temperature = temperature
         self.top_p = top_p
         self.user = user
         self.kwargs = kwargs
+
+
+class OpenAiBenchmarkConfig(OpenAiConfig):
+    """
+    OpenAiBenchmarkConfig is a class that holds the configuration for
+    the HuggingFace models that use for the benchmarking of the models.
+
+    The temperature is set to 0.2.
+
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(temperature=0.2, **kwargs)
+
+
+if __name__ == "__main__":
+    config = OpenAiBenchmarkConfig()
+    print(config.to_dict())

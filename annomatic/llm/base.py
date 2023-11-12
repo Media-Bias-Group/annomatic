@@ -115,10 +115,21 @@ class ModelConfig(ABC):
         """
         Convert the model config to a dictionary.
 
-        Values that are None or the default value are not included
-        in the dictionary.
+        Values that are None are not included in the dictionary and the kwargs
+        are flattened.
         """
-        pass
+        items = {
+            key: value
+            for key, value in self.__dict__.items()
+            if value is not None
+        }
+
+        # Flatten kwargs
+        if "kwargs" in items and isinstance(items.get("kwargs", {}), dict):
+            items.update(items.get("kwargs", {}))
+            del items["kwargs"]
+
+        return items
 
 
 class ModelPredictionError(Exception):
