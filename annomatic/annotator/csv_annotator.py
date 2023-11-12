@@ -6,7 +6,10 @@ import pandas as pd
 
 from annomatic.annotator.base import BaseAnnotator
 from annomatic.io import CsvInput, CsvOutput
-from annomatic.llm.base import Model, ResponseList
+from annomatic.llm.base import Model, ModelConfig, ResponseList
+from annomatic.llm.huggingface.config import HuggingFaceConfig
+from annomatic.llm.openai import OpenAiConfig
+from annomatic.llm.vllm.config import VllmConfig
 from annomatic.prompt import Prompt
 
 LOGGER = logging.getLogger(__name__)
@@ -31,7 +34,7 @@ class CsvAnnotator(BaseAnnotator):
         self,
         model_name: str,
         model_lib: str,
-        model_args: Optional[dict] = None,
+        config: ModelConfig,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
         out_path: str = "",
@@ -45,11 +48,7 @@ class CsvAnnotator(BaseAnnotator):
             out_path (str): Path to the output file.
             kwargs: a dict containing additional arguments
         """
-        if model_args is None:
-            self.model_args = {}
-        else:
-            self.model_args = model_args
-
+        self.config = config
         self.model_name = model_name
         self.out_path = out_path
         self.to_kwargs = False
@@ -384,8 +383,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         self,
         api_key: str = "",
         model_name: str = "gpt-3.5-turbo",
-        temperature=0.0,
-        model_args: Optional[dict] = None,
+        config: OpenAiConfig = OpenAiConfig(),
         batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         out_path: str = "",
     ):
@@ -398,12 +396,11 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         super().__init__(
             model_name=model_name,
             model_lib="openai",
-            model_args=model_args,
+            config=config,
             out_path=out_path,
             batch_size=batch_size,
         )
         self.api_key = api_key
-        self.temperature = temperature
         self.batch_size = OpenAiCsvAnnotator.DEFAULT_BATCH_SIZE
 
     def _load_model(self):
@@ -412,7 +409,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         self._model = OpenAiModel(
             model_name=self.model_name,
             api_key=self.api_key,
-            temperature=self.temperature,
+            config=self.config,
         )
         return self._model
 
@@ -436,7 +433,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         self,
         model_name: str,
         out_path: str,
-        model_args: Optional[dict] = None,
+        config: HuggingFaceConfig = HuggingFaceConfig(),
         token_args: Optional[dict] = None,
         batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         auto_model: str = "AutoModelForCausalLM",
@@ -452,7 +449,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         super().__init__(
             model_name=model_name,
             model_lib="huggingface",
-            model_args=model_args,
+            config=config,
             out_path=out_path,
             batch_size=batch_size,
         )
@@ -469,8 +466,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
 
             self._model = HFAutoModelForCausalLM(
                 model_name=self.model_name,
-                model_args=self.model_args,
-                tokenizer_args=self.token_args,
+                config=self.config,
             )
             return self._model
 
@@ -479,8 +475,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
 
             self._model = HFAutoModelForSeq2SeqLM(
                 model_name=self.model_name,
-                model_args=self.model_args,
-                tokenizer_args=self.token_args,
+                config=self.config,
             )
             return self._model
 
@@ -496,8 +491,7 @@ class VllmCsvAnnotator(CsvAnnotator):
         self,
         model_name: str,
         out_path: str,
-        model_args: Optional[dict] = None,
-        token_args: Optional[dict] = None,
+        config: VllmConfig = VllmConfig(),
         batch_size: Optional[int] = None,
     ):
         """
@@ -507,14 +501,10 @@ class VllmCsvAnnotator(CsvAnnotator):
         super().__init__(
             model_name=model_name,
             model_lib="vllm",
-            model_args=model_args,
+            config=config,
             out_path=out_path,
             batch_size=batch_size,
         )
-        if token_args is None:
-            self.token_args = {}
-        else:
-            self.token_args = token_args
 
     def _load_model(self):
         # lazy import to avoid circular imports
@@ -522,7 +512,6 @@ class VllmCsvAnnotator(CsvAnnotator):
 
         self._model = VllmModel(
             model_name=self.model_name,
-            model_args=self.model_args,
-            param_args=self.token_args,
+            config=self.config,
         )
         return self._model

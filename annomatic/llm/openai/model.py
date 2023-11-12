@@ -7,6 +7,7 @@ from annomatic.llm.base import (
     Response,
     ResponseList,
 )
+from annomatic.llm.openai.config import OpenAiConfig
 from annomatic.llm.openai.utils import _build_response, build_message
 
 LOGGER = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ class OpenAiModel(Model):
         self,
         api_key: str = "",
         model_name: str = "gpt-3.5-turbo",
-        generation_args: Optional[dict] = None,
+        config: OpenAiConfig = OpenAiConfig(),
     ):
         """
         Initialize the OpenAI model.
@@ -70,9 +71,7 @@ class OpenAiModel(Model):
             ValueError: If no API key is provided.
         """
         super().__init__(model_name=model_name)
-        if generation_args is None:
-            generation_args = {}
-        self.generation_args = generation_args
+        self.config = config or OpenAiConfig()
 
         if model_name in self.COMPLETION_ONLY:
             LOGGER.info("Warning. Legacy API used!")
@@ -167,7 +166,7 @@ class OpenAiModel(Model):
             return openai.Completion.create(
                 model=self._model,
                 prompt=prompt,
-                **self.generation_args,
+                **self.config.to_dict(),
             )
         except Exception as exception:
             _handle_open_ai_exception(exception)
@@ -196,7 +195,7 @@ class OpenAiModel(Model):
             return openai.ChatCompletion.create(
                 model=self._model,
                 messages=messages,
-                **self.generation_args,
+                **self.config.to_dict(),
             )
         except Exception as exception:
             _handle_open_ai_exception(exception)

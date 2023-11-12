@@ -2,7 +2,8 @@ import logging
 from typing import List, Optional
 
 from annomatic.llm import ResponseList
-from annomatic.llm.base import Model
+from annomatic.llm.base import Model, ModelConfig
+from annomatic.llm.vllm.config import VllmConfig
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,16 +25,15 @@ class VllmModel(Model):
         self,
         model_name: str,
         model_args: Optional[dict] = None,
-        generation_args: Optional[dict] = None,
+        config: ModelConfig = VllmConfig(),
     ):
         super().__init__(model_name=model_name)
         if model_args is None:
             model_args = {}
-        if generation_args is None:
-            generation_args = {}
+        self.config = config or VllmConfig()
 
         self.model = LLM(model_name, **model_args)
-        self.samplingParams = SamplingParams(**generation_args)
+        self.samplingParams = SamplingParams(self.config.to_dict())
 
     def predict(
         self,

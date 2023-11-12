@@ -7,7 +7,11 @@ from cfgv import Optional
 from annomatic.annotator.csv_annotator import CsvAnnotator, VllmCsvAnnotator
 from annomatic.llm import Response, ResponseList
 from annomatic.prompt.prompt import Prompt
-from tests.model.mock import FakeHFAutoModelForCausalLM, FakeOpenAiModel, FakeVllmModel
+from tests.model.mock import (
+    FakeHFAutoModelForCausalLM,
+    FakeOpenAiModel,
+    FakeVllmModel,
+)
 
 
 class FakeOpenAiCSVAnnotator(CsvAnnotator):
@@ -22,7 +26,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
         self,
         model_lib: str = " ",
         model_name: str = " ",
-        model_args: Optional[dict] = None,
+        config: Optional[dict] = None,
         batch_size: Optional[int] = 5,
         out_path: str = "",
         **kwargs,
@@ -30,7 +34,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
         super().__init__(
             model_name=model_name,
             model_lib=model_lib,
-            model_args=model_args,
+            config=config,
             out_path=out_path,
             batch_size=batch_size,
             **kwargs,
@@ -71,7 +75,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
         self,
         model_lib: str,
         model_name: str = " ",
-        model_args: Optional[dict] = None,
+        config: Optional[dict] = None,
         batch_size: Optional[int] = 5,
         out_path: str = "",
         labels: Optional[list] = None,
@@ -80,7 +84,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
         super().__init__(
             model_name=model_name,
             model_lib=model_lib,
-            model_args=model_args,
+            config=config,
             out_path=out_path,
             batch_size=batch_size,
             labels=labels,
@@ -121,14 +125,14 @@ class FakeVllmCsvAnnotator(VllmCsvAnnotator):
         self,
         model_lib: str,
         model_name: str = " ",
-        model_args: Optional[dict] = None,
+        config: Optional[dict] = None,
         batch_size: Optional[int] = 5,
         out_path: str = "",
         **kwargs,
     ):
         super().__init__(
             model_name=model_name,
-            model_args=model_args,
+            config=config,
             out_path=out_path,
             batch_size=batch_size,
         )

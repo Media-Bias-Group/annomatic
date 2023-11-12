@@ -3,9 +3,14 @@ from typing import List, Optional, Union
 
 from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
+from annomatic.llm.huggingface.config import HuggingFaceConfig
 
 try:
-    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoModelForSeq2SeqLM,
+        AutoTokenizer,
+    )
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with huggingface" before using this model!'
@@ -23,25 +28,14 @@ class HuggingFaceModel(Model, ABC):
     def __init__(
         self,
         model_name: str,
-        tokenizer_args: Optional[dict] = None,
-        generation_args: Optional[dict] = None,
-        tokenization_args: Optional[dict] = None,
+        config: HuggingFaceConfig = HuggingFaceConfig(),
     ):
         super().__init__(model_name=model_name)
-        if generation_args is None:
-            generation_args = {}
-        if tokenization_args is None:
-            tokenization_args = {}
-
-        self.generation_args = generation_args
-        self.tokenization_args = tokenization_args
-
-        if tokenizer_args is None:
-            tokenizer_args = {}
+        self.config = config or HuggingFaceConfig()
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
-            **tokenizer_args,
+            **self.config.to_dict(),
         )
         self.model: Optional[
             Union[AutoModelForCausalLM, AutoModelForSeq2SeqLM]
@@ -79,17 +73,14 @@ class HuggingFaceModel(Model, ABC):
         else:
             padding = False
 
-        # set necessary tokenization args
-        self.tokenization_args["padding"] = padding
-        self.tokenization_args["return_tensors"] = "pt"
-        self.tokenization_args["return_length"] = True
+        return self._predict(messages=messages, padding=padding)
 
-        return self._predict(messages=messages)
-
-    def _predict(self, messages: List[str]) -> ResponseList:
+    def _predict(self, messages: List[str], **kwargs) -> ResponseList:
         model_inputs = self.tokenizer(
             messages,
-            **self.tokenization_args,
+            return_tensors="pt",
+            return_length=True,
+            **kwargs,
         )
 
         # Pop length from model_inputs, otherwise set length to default (20)
@@ -97,12 +88,11 @@ class HuggingFaceModel(Model, ABC):
         if self.model is not None and self.model.device.type == "cuda":
             model_inputs = model_inputs.to("cuda")
 
-        if "max_length" not in self.generation_args:
-            self.generation_args["max_length"] = input_length * 2
+        if self.config.to_dict().get("max_length", 20) == 20:
+            self.config.kwargs["max_length"] = input_length * 2
 
         decoded_output = self._call_llm_and_decode(
             model_inputs,
-            **self.generation_args,
         )
 
         # remove the input from any response (if needed)
@@ -116,7 +106,6 @@ class HuggingFaceModel(Model, ABC):
     def _call_llm_and_decode(
         self,
         model_inputs,
-        generation_args: dict,
     ) -> List[str]:
         """
         makes the library call for the LLM prediction.
@@ -126,7 +115,7 @@ class HuggingFaceModel(Model, ABC):
 
         model_outputs = self.model.generate(
             **model_inputs,
-            **generation_args,
+            **self.config.to_dict(),
         )
         return self.tokenizer.batch_decode(
             model_outputs,
@@ -150,20 +139,17 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
     def __init__(
         self,
         model_name: str,
-        model_args=None,
-        tokenizer_args=None,
+        config: HuggingFaceConfig = HuggingFaceConfig(),
     ):
         super().__init__(
             model_name=model_name,
-            tokenizer_args=tokenizer_args,
+            config=config,
         )
-        if model_args is None:
-            model_args = {}
 
         self.model: AutoModelForCausalLM = (
             AutoModelForCausalLM.from_pretrained(
                 model_name,
-                **model_args,
+                **self.config.to_dict(),
             )
         )
 
@@ -190,20 +176,17 @@ class HFAutoModelForSeq2SeqLM(HuggingFaceModel):
     def __init__(
         self,
         model_name: str,
-        model_args: Optional[dict] = None,
-        tokenizer_args: Optional[dict] = None,
+        config: HuggingFaceConfig = HuggingFaceConfig(),
     ):
         super().__init__(
             model_name=model_name,
-            tokenizer_args=tokenizer_args,
+            config=config,
         )
-        if model_args is None:
-            model_args = {}
 
         self.model: AutoModelForSeq2SeqLM = (
             AutoModelForSeq2SeqLM.from_pretrained(
                 model_name,
-                **model_args,
+                **self.config.to_dict(),
             )
         )
 
