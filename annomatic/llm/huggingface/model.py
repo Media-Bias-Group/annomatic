@@ -5,8 +5,11 @@ from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
 
 try:
-    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, \
-        AutoTokenizer
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoModelForSeq2SeqLM,
+        AutoTokenizer,
+    )
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with huggingface" before using this model!'
@@ -95,9 +98,9 @@ class HuggingFaceModel(Model, ABC):
         )
 
     def _call_llm_and_decode(
-            self,
-            model_inputs,
-            output_length: int,
+        self,
+        model_inputs,
+        output_length: int,
     ) -> List[str]:
         """
         makes the library call for the LLM prediction.
@@ -105,6 +108,7 @@ class HuggingFaceModel(Model, ABC):
         if self.model is None:
             raise ValueError("Model is not initialized!")
 
+        self.model.eval()  # make outputs deterministic
         model_outputs = self.model.generate(
             **model_inputs,
             max_length=output_length,
@@ -150,7 +154,7 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
 
     def _format_output(self, decoded_output, messages):
         return [
-            response[len(prefix):].strip()
+            response[len(prefix) :].strip()
             for response, prefix in zip(decoded_output, messages)
         ]
 
@@ -169,10 +173,10 @@ class HFAutoModelForSeq2SeqLM(HuggingFaceModel):
     """
 
     def __init__(
-            self,
-            model_name: str,
-            model_args=None,
-            token_args=None,
+        self,
+        model_name: str,
+        model_args=None,
+        token_args=None,
     ):
         super().__init__(
             model_name=model_name,
