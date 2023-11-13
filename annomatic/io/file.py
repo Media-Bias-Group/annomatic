@@ -74,12 +74,15 @@ class CsvInput(BaseFileInput):
         """
         super().__init__(path)
 
-    def read(self) -> pd.DataFrame:
+    def read(self, sep: str) -> pd.DataFrame:
         """
         Read the provided content from the file.
+
+        Arguments:
+            sep (str): The separator to use for parsing the CSV file.
         """
         try:
-            return pd.read_csv(self._path)
+            return pd.read_csv(self._path, sep=sep)
         except Exception as e:
             LOGGER.error(
                 f"Error reading CSV file: {e}. Return Empty DataFrame",
