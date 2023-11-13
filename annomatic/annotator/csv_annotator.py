@@ -97,6 +97,7 @@ class CsvAnnotator(BaseAnnotator):
         data: Union[pd.DataFrame, str],
         in_col: str = "input",
         to_kwargs: bool = False,
+        sep: str = ",",
     ):
         """
         Sets the input data for the annotator.
@@ -106,6 +107,7 @@ class CsvAnnotator(BaseAnnotator):
             in_col: str representing the name of the input column.
             to_kwargs: bool representing whether to add the other rows
                        to the kwargs.
+            sep: str representing the separator for the CSV file.
         """
         if self._input is not None:
             LOGGER.info("Input data is already set. Will be overwritten.")
@@ -119,7 +121,7 @@ class CsvAnnotator(BaseAnnotator):
         if isinstance(data, pd.DataFrame):
             self._input = data
         elif isinstance(data, str):
-            self._input = CsvInput(data).read()
+            self._input = CsvInput(data).read(sep=sep)
         else:
             raise ValueError(
                 "Invalid input type! "
