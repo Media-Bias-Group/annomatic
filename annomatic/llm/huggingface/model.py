@@ -1,12 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
+import logging
 
 from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
 
 try:
-    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, \
-        AutoTokenizer
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoModelForSeq2SeqLM,
+        AutoTokenizer,
+    )
 except ImportError as e:
     raise ValueError(
         'Install "poetry install --with huggingface" before using this model!'
@@ -14,6 +18,8 @@ except ImportError as e:
         '"pip install torch"',
         e,
     ) from None
+
+LOGGER = logging.getLogger(__name__)
 
 
 class HuggingFaceModel(Model, ABC):
@@ -59,8 +65,8 @@ class HuggingFaceModel(Model, ABC):
         if isinstance(messages, List) and len(messages) > 1:
             padding = True
             if not self.tokenizer.pad_token:
-                print(
-                    "Tokenizer doesn't have a pad_token! Use pad_token_id = 0",
+                LOGGER.warning(
+                    "Tokenizer doesn't have a pad_token! Using pad_token_id = 0"
                 )
                 self.tokenizer.pad_token_id = 0
         else:
