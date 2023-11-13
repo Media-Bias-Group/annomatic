@@ -223,10 +223,10 @@ class CsvAnnotator(BaseAnnotator):
             kwargs: a dict containing the input variables for templates
         """
         output_data = []
-        total_rows = self._input.shape[0]
-        LOGGER.info(f"Starting Annotation of {total_rows}")
 
         try:
+            total_rows = self._input.shape[0]
+            LOGGER.info(f"Starting Annotation of {total_rows}")
             num_batches = self._num_batches(total_rows)
             for idx in range(num_batches):
                 batch = self._input.iloc[
