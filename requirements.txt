@@ -3,6 +3,7 @@ pandas~=2.1.1
 # Requirements for development
 pytest~=7.4.2
 pre-commit~=3.4.0
+tqdm~=4.64.1
 # Requirements for OpenAI (optional)
 openai~=0.28.1
 tenacity~=8.2.3
