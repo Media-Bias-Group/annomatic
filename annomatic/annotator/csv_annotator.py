@@ -9,6 +9,8 @@ from annomatic.io import CsvInput, CsvOutput
 from annomatic.llm.base import Model, ResponseList
 from annomatic.prompt import Prompt
 
+from tqdm import tqdm
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -228,7 +230,7 @@ class CsvAnnotator(BaseAnnotator):
             total_rows = self._input.shape[0]
             LOGGER.info(f"Starting Annotation of {total_rows}")
             num_batches = self._num_batches(total_rows)
-            for idx in range(num_batches):
+            for idx in tqdm(range(num_batches)):
                 batch = self._input.iloc[
                     idx * self.batch_size : (idx + 1) * self.batch_size
                 ]
