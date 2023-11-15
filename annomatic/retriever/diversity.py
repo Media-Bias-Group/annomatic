@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 from sklearn.cluster import KMeans
 
-from tests.retriever.base import Retriever
+from .base import Retriever
 
 
 class DiversityRetriever(Retriever):

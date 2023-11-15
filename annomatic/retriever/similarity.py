@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 from sentence_transformers import util
 
-from tests.retriever.base import Retriever
+from .base import Retriever
 
 
 class SimilarityRetriever(Retriever):
