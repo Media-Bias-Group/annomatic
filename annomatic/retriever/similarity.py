@@ -24,7 +24,7 @@ class SimilarityRetriever(Retriever):
     def __init__(
         self,
         k: int,
-        model_name: str = "all-mpnet-base-v2",
+        model_name: str = "BAAI/llm-embedder",
         seed: int = 42,
     ):
         super().__init__(k=k, model_name=model_name, seed=seed)
@@ -51,23 +51,16 @@ class SimilarityRetriever(Retriever):
         # Compute embeddings for the query sentence
         query_embedding = self.model.encode(
             query,
-            convert_to_numpy=True,
             convert_to_tensor=True,
         )
 
         # Compute cosine similarities between the query and pool embeddings
-        cos_similarities = [
-            util.pytorch_cos_sim(query_embedding, embedding)
-            for embedding in self.embeddings
-        ]
-        # Convert to numpy array
-        cos_similarities_np = [
-            cos_sim.numpy().flatten()[0] for cos_sim in cos_similarities
-        ]
+        cos_similarities = util.pytorch_cos_sim(
+            query_embedding,
+            self.embeddings,
+        )
 
         # Get k-nearest neighbors in descending order
-        k_nearest_neighbors = np.array(cos_similarities_np).argsort()[
-            -self.k :
-        ][::-1]
+        k_nearest_neighbors = cos_similarities.topk(self.k).indices[0]
 
-        return [pool[i] for i in k_nearest_neighbors]
+        return [pool[i] for i in k_nearest_neighbors.tolist()]

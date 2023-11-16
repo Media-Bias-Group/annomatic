@@ -12,7 +12,7 @@ class Retriever(ABC):
     def __init__(
         self,
         k: int,
-        model_name: str = "all-mpnet-base-v2",
+        model_name: str = "BAAI/llm-embedder",
         seed: int = 42,
     ):
         self.model_name = model_name
@@ -38,7 +38,6 @@ class Retriever(ABC):
             self.embeddings = self.model.encode(
                 pool,
                 show_progress_bar=True,
-                convert_to_numpy=True,
                 convert_to_tensor=True,
             )
         return self.embeddings

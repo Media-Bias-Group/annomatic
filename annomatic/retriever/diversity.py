@@ -24,7 +24,7 @@ class DiversityRetriever(Retriever):
     def __init__(
         self,
         k: int,
-        model_name: str = "all-mpnet-base-v2",
+        model_name: str = "BAAI/llm-embedder",
         seed: int = 42,
     ):
         super().__init__(k=k, model_name=model_name, seed=seed)
