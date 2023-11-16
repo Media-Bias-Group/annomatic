@@ -9,7 +9,7 @@ from annomatic.annotator.base import BaseAnnotator
 from annomatic.io import CsvInput, CsvOutput
 from annomatic.llm.base import Model, ModelConfig, ResponseList
 from annomatic.llm.huggingface.config import HuggingFaceConfig
-from annomatic.llm.openai import OpenAiConfig
+from annomatic.llm.openai.config import OpenAiConfig
 from annomatic.llm.vllm.config import VllmConfig
 from annomatic.prompt import Prompt
 
