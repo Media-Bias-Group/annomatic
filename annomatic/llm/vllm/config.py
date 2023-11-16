@@ -28,7 +28,9 @@ class VllmConfig(ModelConfig):
         logprobs: Optional[int] = None,
         prompt_logprobs: Optional[int] = None,
         skip_special_tokens: bool = True,
+        **kwargs,
     ) -> None:
+        super.__init__(**kwargs)
         self.n = n
         self.best_of = best_of
         self.presence_penalty = presence_penalty
@@ -46,6 +48,28 @@ class VllmConfig(ModelConfig):
         self.logprobs = logprobs
         self.prompt_logprobs = prompt_logprobs
         self.skip_special_tokens = skip_special_tokens
+
+    @staticmethod
+    def get_default_values() -> dict:
+        return {
+            "n": 1,
+            "best_of": None,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0,
+            "temperature": 1.0,
+            "top_p": 1.0,
+            "top_k": -1,
+            "use_beam_search": False,
+            "length_penalty": 1.0,
+            "early_stopping": False,
+            "stop": None,
+            "stop_token_ids": None,
+            "ignore_eos": False,
+            "max_tokens": 16,
+            "logprobs": None,
+            "prompt_logprobs": None,
+            "skip_special_tokens": True,
+        }
 
 
 class VllmBenchmarkConfig(VllmConfig):

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List
+from typing import Any, Dict, List
 
 
 class Response:
@@ -110,26 +110,35 @@ class ModelConfig(ABC):
         """
         Initialize the model config.
         """
+        self.kwargs = kwargs
 
-    def to_dict(self):
+    @staticmethod
+    def get_default_values() -> Dict[str, Any]:
+        """
+        Return a dictionary of the default values for the model config.
+        """
+        raise NotImplementedError()
+
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the model config to a dictionary.
 
-        Values that are None are not included in the dictionary and the kwargs
-        are flattened.
+        Values that are different from the values set in the __init__ method
+        are included in the dictionary, and the kwargs are flattened.
+
+        Returns:
+            dict: A dictionary representing the model configuration.
         """
-        items = {
-            key: value
-            for key, value in self.__dict__.items()
-            if value is not None
-        }
+        default_values = self.get_default_values()
+        config_dict = {}
 
-        # Flatten kwargs
-        if "kwargs" in items and isinstance(items.get("kwargs", {}), dict):
-            items.update(items.get("kwargs", {}))
-            del items["kwargs"]
+        for key, value in default_values.items():
+            if getattr(self, f"{key}", None) != value:
+                config_dict[key] = getattr(self, f"{key}")
 
-        return items
+        config_dict.update(self.kwargs.items())
+
+        return config_dict
 
 
 class ModelPredictionError(Exception):

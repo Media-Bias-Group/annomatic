@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from annomatic.llm.base import ModelConfig
 
@@ -31,6 +31,7 @@ class HuggingFaceConfig(ModelConfig):
         num_return_sequences: int = 1,
         **kwargs,
     ) -> None:
+        super().__init__(**kwargs)
         self.max_length = max_length
         self.min_length = min_length
         self.do_sample = do_sample
@@ -44,7 +45,24 @@ class HuggingFaceConfig(ModelConfig):
         self.no_repeat_ngram_size = no_repeat_ngram_size
         self.bad_words_ids = bad_words_ids
         self.num_return_sequences = num_return_sequences
-        self.kwargs = kwargs
+
+    @staticmethod
+    def get_default_values() -> Dict[str, Any]:
+        return {
+            "max_length": 20,
+            "min_length": 10,
+            "do_sample": False,
+            "early_stopping": False,
+            "num_beams": 1,
+            "temperature": 1.0,
+            "top_k": 50,
+            "top_p": 1.0,
+            "repetition_penalty": 1.0,
+            "length_penalty": 1.0,
+            "no_repeat_ngram_size": 0,
+            "bad_words_ids": None,
+            "num_return_sequences": 1,
+        }
 
 
 class HuggingFaceBenchmarkConfig(HuggingFaceConfig):

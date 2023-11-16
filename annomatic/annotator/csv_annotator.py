@@ -3,6 +3,7 @@ from enum import Enum
 from typing import List, Optional, Union
 
 import pandas as pd
+from tqdm import tqdm
 
 from annomatic.annotator.base import BaseAnnotator
 from annomatic.io import CsvInput, CsvOutput
@@ -11,8 +12,6 @@ from annomatic.llm.huggingface.config import HuggingFaceConfig
 from annomatic.llm.openai import OpenAiConfig
 from annomatic.llm.vllm.config import VllmConfig
 from annomatic.prompt import Prompt
-
-from tqdm import tqdm
 
 LOGGER = logging.getLogger(__name__)
 
@@ -438,7 +437,6 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         model_name: str,
         out_path: str,
         config: HuggingFaceConfig = HuggingFaceConfig(),
-        token_args: Optional[dict] = None,
         batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         auto_model: str = "AutoModelForCausalLM",
     ):
@@ -447,8 +445,6 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             model_name: str representing the Name of the HuggingFace model
             auto_model: str representing the AutoModel class
             out_path: str representing the path to the output file
-            model_args: dict representing the model arguments
-            token_args: dict representing the token arguments
         """
         super().__init__(
             model_name=model_name,
@@ -457,11 +453,6 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             out_path=out_path,
             batch_size=batch_size,
         )
-        if token_args is None:
-            self.token_args = {}
-        else:
-            self.token_args = token_args
-
         self.auto_model = auto_model
 
     def _load_model(self):

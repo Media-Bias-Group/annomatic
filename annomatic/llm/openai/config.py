@@ -28,6 +28,7 @@ class OpenAiConfig(ModelConfig):
         user: Optional[str] = None,
         **kwargs,
     ) -> None:
+        super.__init__(**kwargs)
         self.frequency_penalty = frequency_penalty
         self.logit_bias = logit_bias
         self.max_tokens = max_tokens
@@ -39,7 +40,22 @@ class OpenAiConfig(ModelConfig):
         self.temperature = temperature
         self.top_p = top_p
         self.user = user
-        self.kwargs = kwargs
+
+    @staticmethod
+    def get_default_values() -> dict:
+        return {
+            "frequency_penalty": 0.0,
+            "logit_bias": None,
+            "max_tokens": None,
+            "n": 1,
+            "presence_penalty": 0.0,
+            "response_format": None,
+            "stop": None,
+            "seed": None,
+            "temperature": 1.0,
+            "top_p": 1.0,
+            "user": None,
+        }
 
 
 class OpenAiBenchmarkConfig(OpenAiConfig):

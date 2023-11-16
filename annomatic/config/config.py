@@ -15,20 +15,20 @@ class ConfigFactory:
     }
 
     @staticmethod
-    def create_config(model_type: str, **kwargs) -> ModelConfig:
-        return ConfigFactory._create_config(
-            model_type,
-            ConfigFactory.CONFIG_CLASSES,
-            **kwargs,
-        )
-
-    @staticmethod
     def _create_config(model_type: str, config_classes, **kwargs):
         config_class = config_classes.get(model_type)
         if config_class is not None:
             return config_class(**kwargs)
         else:
             raise ValueError(f"Unknown model: {model_type}")
+
+    @staticmethod
+    def create_config(model_type: str, **kwargs) -> ModelConfig:
+        return ConfigFactory._create_config(
+            model_type,
+            ConfigFactory.CONFIG_CLASSES,
+            **kwargs,
+        )
 
 
 class BenchmarkConfigFactory(ConfigFactory):

@@ -1,6 +1,6 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
-import logging
 
 from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
@@ -69,10 +69,12 @@ class HuggingFaceModel(Model, ABC):
         if isinstance(messages, List) and len(messages) > 1:
             padding = True
             if not self.tokenizer.pad_token:
+                pad_token_id = self.config.kwargs.get("pad_token_id", 0)
                 LOGGER.warning(
-                    "Tokenizer doesn't have a pad_token! Using pad_token_id = 0"
+                    f"Tokenizer doesn't have a pad_token!"
+                    f"Using pad_token_id = {pad_token_id}",
                 )
-                self.tokenizer.pad_token_id = 0
+                self.tokenizer.pad_token_id = pad_token_id
         else:
             padding = False
 
@@ -96,7 +98,6 @@ class HuggingFaceModel(Model, ABC):
 
         decoded_output = self._call_llm_and_decode(
             model_inputs,
-            2 * input_length,
         )
 
         # remove the input from any response (if needed)
