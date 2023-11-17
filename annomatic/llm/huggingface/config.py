@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from annomatic.llm.base import ModelConfig
+from annomatic.config.base import ModelConfig
 
 
 class HuggingFaceConfig(ModelConfig):
@@ -74,4 +74,11 @@ class HuggingFaceBenchmarkConfig(HuggingFaceConfig):
     """
 
     def __init__(self, **kwargs):
+        if (
+            kwargs.get("temperature") is not None
+            or kwargs.get("do_sample") is not None
+        ):
+            raise ValueError(
+                "Temperature should not be modified for benchmarking!",
+            )
         super().__init__(temperature=0.2, do_sample=True, **kwargs)

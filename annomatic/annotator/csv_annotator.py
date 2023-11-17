@@ -6,11 +6,10 @@ import pandas as pd
 from tqdm import tqdm
 
 from annomatic.annotator.base import BaseAnnotator
+from annomatic.config.base import ModelConfig
+from annomatic.config.factory import ConfigFactory
 from annomatic.io import CsvInput, CsvOutput
-from annomatic.llm.base import Model, ModelConfig, ResponseList
-from annomatic.llm.huggingface.config import HuggingFaceConfig
-from annomatic.llm.openai.config import OpenAiConfig
-from annomatic.llm.vllm.config import VllmConfig
+from annomatic.llm.base import Model, ResponseList
 from annomatic.prompt import Prompt
 
 LOGGER = logging.getLogger(__name__)
@@ -386,7 +385,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         self,
         api_key: str = "",
         model_name: str = "gpt-3.5-turbo",
-        config: OpenAiConfig = OpenAiConfig(),
+        config: ModelConfig = ConfigFactory.create("openai"),
         batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         out_path: str = "",
     ):
@@ -436,7 +435,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         self,
         model_name: str,
         out_path: str,
-        config: HuggingFaceConfig = HuggingFaceConfig(),
+        config: ModelConfig = ConfigFactory.create("huggingface"),
         batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         auto_model: str = "AutoModelForCausalLM",
     ):
@@ -486,7 +485,7 @@ class VllmCsvAnnotator(CsvAnnotator):
         self,
         model_name: str,
         out_path: str,
-        config: VllmConfig = VllmConfig(),
+        config: ModelConfig = ConfigFactory.create("vllm"),
         batch_size: Optional[int] = None,
     ):
         """

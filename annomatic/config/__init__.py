@@ -1,1 +1,1 @@
-from .config import BenchmarkConfigFactory, ConfigFactory
+from .factory import BenchmarkConfigFactory, ConfigFactory

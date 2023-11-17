@@ -1,6 +1,6 @@
 from typing import List, Optional, Union
 
-from annomatic.llm.base import ModelConfig
+from annomatic.config.factory import ModelConfig
 
 
 class VllmConfig(ModelConfig):
@@ -30,7 +30,7 @@ class VllmConfig(ModelConfig):
         skip_special_tokens: bool = True,
         **kwargs,
     ) -> None:
-        super.__init__(**kwargs)
+        super().__init__(**kwargs)
         self.n = n
         self.best_of = best_of
         self.presence_penalty = presence_penalty
@@ -82,4 +82,9 @@ class VllmBenchmarkConfig(VllmConfig):
     """
 
     def __init__(self, **kwargs):
+        if kwargs.get("temperature") is not None:
+            raise ValueError(
+                "Temperature should not be modified " "for benchmarking!",
+            )
+
         super().__init__(temperature=0.2, **kwargs)

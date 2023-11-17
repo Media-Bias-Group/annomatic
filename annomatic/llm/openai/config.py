@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from annomatic.llm.base import ModelConfig
+from annomatic.config.base import ModelConfig
 
 
 class OpenAiConfig(ModelConfig):
@@ -28,7 +28,7 @@ class OpenAiConfig(ModelConfig):
         user: Optional[str] = None,
         **kwargs,
     ) -> None:
-        super.__init__(**kwargs)
+        super().__init__(**kwargs)
         self.frequency_penalty = frequency_penalty
         self.logit_bias = logit_bias
         self.max_tokens = max_tokens
@@ -68,6 +68,9 @@ class OpenAiBenchmarkConfig(OpenAiConfig):
     """
 
     def __init__(self, **kwargs):
+        if kwargs.get("temperature") is not None:
+            raise ValueError("Temperature should not be set for benchmarking!")
+
         super().__init__(temperature=0.2, **kwargs)
 
 
