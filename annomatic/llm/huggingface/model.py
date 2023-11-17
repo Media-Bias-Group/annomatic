@@ -93,8 +93,8 @@ class HuggingFaceModel(Model, ABC):
         if self.model is not None and self.model.device.type == "cuda":
             model_inputs = model_inputs.to("cuda")
 
-        if self.config.to_dict().get("max_length", 20) == 20:
-            self.config.kwargs["max_length"] = input_length * 2
+        if self.config.max_length == 20:
+            self.config.max_length = input_length * 2
 
         decoded_output = self._call_llm_and_decode(
             model_inputs,
@@ -120,7 +120,7 @@ class HuggingFaceModel(Model, ABC):
 
         model_outputs = self.model.generate(
             **model_inputs,
-            **self.config.to_dict(),
+            max_length=self.config.max_length,
         )
         return self.tokenizer.batch_decode(
             model_outputs,

@@ -235,11 +235,6 @@ class CsvAnnotator(BaseAnnotator):
                 if entries:
                     output_data.extend(entries)
 
-                LOGGER.info(
-                    f"Annotated... {(idx + 1) * self.batch_size} "
-                    f"out of {self._input.shape[0]}",
-                )
-
             # handle rest of the data
             if num_batches * self.batch_size < total_rows:
                 batch = self._input.iloc[num_batches * self.batch_size :]
@@ -338,7 +333,6 @@ class CsvAnnotator(BaseAnnotator):
             return annotated_data
 
         except Exception as exception:
-            # TODO introduce a custom exception
             LOGGER.error(f"Prediction error: {str(exception)}")
             return []
 
