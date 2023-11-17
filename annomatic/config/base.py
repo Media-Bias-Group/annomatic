@@ -21,7 +21,7 @@ class ModelConfig(ABC):
         """
         raise NotImplementedError()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self, exclude_kwargs: bool = False) -> Dict[str, Any]:
         """
         Convert the model config to a dictionary.
 
@@ -38,6 +38,7 @@ class ModelConfig(ABC):
             if getattr(self, f"{key}", None) != value:
                 config_dict[key] = getattr(self, f"{key}")
 
-        config_dict.update(self.kwargs.items())
+        if not exclude_kwargs:
+            config_dict.update(self.kwargs.items())
 
         return config_dict

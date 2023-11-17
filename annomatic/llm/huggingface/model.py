@@ -120,7 +120,7 @@ class HuggingFaceModel(Model, ABC):
 
         model_outputs = self.model.generate(
             **model_inputs,
-            max_length=self.config.max_length,
+            **self.config.to_dict(exclude_kwargs=True),
         )
         return self.tokenizer.batch_decode(
             model_outputs,
