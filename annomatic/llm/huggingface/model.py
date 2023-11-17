@@ -8,6 +8,7 @@ from annomatic.llm.huggingface.config import HuggingFaceConfig
 
 try:
     from transformers import (
+        AutoConfig,
         AutoModelForCausalLM,
         AutoModelForSeq2SeqLM,
         AutoTokenizer,
@@ -150,11 +151,14 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
             model_name=model_name,
             config=config,
         )
-
+        model_config = AutoConfig.from_pretrained(
+            model_name,
+            **self.config.to_dict(),
+        )
         self.model: AutoModelForCausalLM = (
             AutoModelForCausalLM.from_pretrained(
                 model_name,
-                **self.config.to_dict(),
+                config=model_config,
             )
         )
 
@@ -188,10 +192,15 @@ class HFAutoModelForSeq2SeqLM(HuggingFaceModel):
             config=config,
         )
 
+        model_config = AutoConfig.from_pretrained(
+            model_name,
+            **self.config.to_dict(),
+        )
+
         self.model: AutoModelForSeq2SeqLM = (
             AutoModelForSeq2SeqLM.from_pretrained(
                 model_name,
-                **self.config.to_dict(),
+                config=model_config,
             )
         )
 
