@@ -1,14 +1,11 @@
 from importlib import import_module
+from typing import Any, Dict
 
 from annomatic.config.base import ModelConfig
 
 
 class ConfigFactory:
-    CONFIG_PATH = {
-        "openai": "annomatic.llm.openai.config",
-        "huggingface": "annomatic.llm.huggingface.config",
-        "vllm": "annomatic.llm.vllm.config",
-    }
+    CONFIG_PATH = "annomatic.config.base"
 
     CONFIG_CLASSES = {
         "openai": "OpenAiConfig",
@@ -17,16 +14,20 @@ class ConfigFactory:
     }
 
     @staticmethod
-    def _create(model_type: str, config_classes, **kwargs):
-        module_path = ConfigFactory.CONFIG_PATH.get(model_type.lower())
-        if module_path is not None:
-            module = import_module(module_path)
+    def _create(
+        model_type: str,
+        config_classes: Dict[str, str],
+        config_path: str,
+        **kwargs,
+    ):
+        try:
+            module = import_module(config_path)
             config_class = getattr(
                 module,
-                config_classes.get(model_type.lower()),
+                config_classes.get(model_type.lower(), "unknown_model"),
             )
             return config_class(**kwargs)
-        else:
+        except Exception:
             available_models = ", ".join(config_classes.keys())
             raise ValueError(
                 f"Unknown model: {model_type}."
@@ -38,11 +39,13 @@ class ConfigFactory:
         return ConfigFactory._create(
             model_type,
             ConfigFactory.CONFIG_CLASSES,
+            ConfigFactory.CONFIG_PATH,
             **kwargs,
         )
 
 
 class BenchmarkConfigFactory(ConfigFactory):
+    CONFIG_PATH = "annomatic.config.benchmark"
     CONFIG_CLASSES = {
         "openai": "OpenAiBenchmarkConfig",
         "huggingface": "HuggingFaceBenchmarkConfig",
@@ -54,5 +57,6 @@ class BenchmarkConfigFactory(ConfigFactory):
         return BenchmarkConfigFactory._create(
             model_type,
             BenchmarkConfigFactory.CONFIG_CLASSES,
+            BenchmarkConfigFactory.CONFIG_PATH,
             **kwargs,
         )

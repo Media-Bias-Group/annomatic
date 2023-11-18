@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import Any, Dict, List, Optional
 
 from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
@@ -20,15 +20,19 @@ class VllmModel(Model):
     A model that uses the vLLM library.
     """
 
-    def __init__(self, model_name: str, model_args=None, param_args=None):
+    def __init__(
+        self,
+        model_name: str,
+        model_args: Optional[Dict[str, Any]] = None,
+        generation_args: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__(model_name=model_name)
-        if model_args is None:
-            model_args = {}
-        if param_args is None:
-            param_args = {}
+
+        model_args = model_args or {}
+        generation_args = generation_args or {}
 
         self.model = LLM(model_name, **model_args)
-        self.samplingParams = SamplingParams(**param_args)
+        self.samplingParams = SamplingParams(**generation_args)
 
     def predict(self, messages: List[str]) -> ResponseList:
         """

@@ -35,7 +35,7 @@ class BaseFileInput(BaseIO, ABC):
         super().__init__(path)
 
     @abstractmethod
-    def read(self):
+    def read(self, sep: str) -> Any:
         """
         Read the provided content to the file.
         """
@@ -74,7 +74,7 @@ class CsvInput(BaseFileInput):
         """
         super().__init__(path)
 
-    def read(self, sep: str) -> pd.DataFrame:
+    def read(self, sep: str) -> Any:
         """
         Read the provided content from the file.
 

@@ -1,7 +1,12 @@
 import logging
 from typing import Any, List, Optional
 
-from annomatic.llm.base import Model, ModelPredictionError, Response, ResponseList
+from annomatic.llm.base import (
+    Model,
+    ModelPredictionError,
+    Response,
+    ResponseList,
+)
 from annomatic.llm.openai.utils import _build_response, build_message
 
 LOGGER = logging.getLogger(__name__)
@@ -51,7 +56,7 @@ class OpenAiModel(Model):
         self,
         api_key: str = "",
         model_name: str = "gpt-3.5-turbo",
-        temperature=0.0,
+        generation_args: Optional[dict[str, Any]] = None,
     ):
         """
         Initialize the OpenAI model.
@@ -60,9 +65,7 @@ class OpenAiModel(Model):
             api_key: The API key for accessing the OpenAI API.
             model_name: string representing the selected model.
                 (Default="gpt-3.5-turbo")
-            temperature: The temperature parameter for text generation.
-                (Default=0.0)
-
+            generation_args: dict containing the generation arguments.
         Raises:
             ValueError: If no API key is provided.
         """
@@ -71,7 +74,8 @@ class OpenAiModel(Model):
             LOGGER.info("Warning. Legacy API used!")
 
         self._model = valid_model(model_name=model_name)
-        self._temperature: int = temperature
+        self.generation_args = generation_args or {}
+
         self.system_prompt: Optional[dict[str, str]] = None
         if api_key == "":
             raise ValueError("No OPEN AI key given!")
@@ -160,6 +164,7 @@ class OpenAiModel(Model):
             return openai.Completion.create(
                 model=self._model,
                 prompt=prompt,
+                **self.generation_args,
             )
         except Exception as exception:
             _handle_open_ai_exception(exception)
@@ -188,7 +193,7 @@ class OpenAiModel(Model):
             return openai.ChatCompletion.create(
                 model=self._model,
                 messages=messages,
-                temperature=self._temperature,
+                **self.generation_args,
             )
         except Exception as exception:
             _handle_open_ai_exception(exception)

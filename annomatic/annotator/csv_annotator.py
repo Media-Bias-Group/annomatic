@@ -1,15 +1,20 @@
 import logging
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
+from tqdm import tqdm
 
 from annomatic.annotator.base import BaseAnnotator
+from annomatic.config.base import (
+    HuggingFaceConfig,
+    ModelConfig,
+    OpenAiConfig,
+    VllmConfig,
+)
 from annomatic.io import CsvInput, CsvOutput
 from annomatic.llm.base import Model, ResponseList
 from annomatic.prompt import Prompt
-
-from tqdm import tqdm
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,7 +38,7 @@ class CsvAnnotator(BaseAnnotator):
         self,
         model_name: str,
         model_lib: str,
-        model_args: Optional[dict] = None,
+        config: ModelConfig,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
         out_path: str = "",
@@ -47,11 +52,7 @@ class CsvAnnotator(BaseAnnotator):
             out_path (str): Path to the output file.
             kwargs: a dict containing additional arguments
         """
-        if model_args is None:
-            self.model_args = {}
-        else:
-            self.model_args = model_args
-
+        self.config = config
         self.model_name = model_name
         self.out_path = out_path
         self.to_kwargs = False
@@ -237,12 +238,6 @@ class CsvAnnotator(BaseAnnotator):
                 entries = self._annotate_batch(batch, **kwargs)
                 if entries:
                     output_data.extend(entries)
-
-                LOGGER.info(
-                    f"Annotated... {(idx + 1) * self.batch_size} "
-                    f"out of {self._input.shape[0]}",
-                )
-
             # handle rest of the data
             if num_batches * self.batch_size < total_rows:
                 batch = self._input.iloc[num_batches * self.batch_size :]
@@ -380,6 +375,8 @@ class CsvAnnotator(BaseAnnotator):
 class OpenAiCsvAnnotator(CsvAnnotator):
     """
     Annotator class for OpenAI models that use CSV files as input and output.
+
+    This class can use LLMs loaded by the OpenAiModel class.
     """
 
     DEFAULT_BATCH_SIZE = 1
@@ -388,26 +385,23 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         self,
         api_key: str = "",
         model_name: str = "gpt-3.5-turbo",
-        temperature=0.0,
-        model_args: Optional[dict] = None,
-        batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
+        config: Optional[OpenAiConfig] = None,
+        generation_args: Optional[dict] = None,
         out_path: str = "",
+        labels: Optional[List[str]] = None,
     ):
-        """
-        Arguments:
-            model_name: str representing the Name of the OpenAI model.
-            api_key: str representing the OpenAI API key.
-            temperature: float value for Temperature for the model.
-        """
         super().__init__(
             model_name=model_name,
             model_lib="openai",
-            model_args=model_args,
+            config=config or OpenAiConfig(),
             out_path=out_path,
-            batch_size=batch_size,
+            batch_size=OpenAiCsvAnnotator.DEFAULT_BATCH_SIZE,
+            labels=labels,
         )
+
+        self.generation_args = generation_args or self.config.to_dict()
+
         self.api_key = api_key
-        self.temperature = temperature
         self.batch_size = OpenAiCsvAnnotator.DEFAULT_BATCH_SIZE
 
     def _load_model(self):
@@ -416,7 +410,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         self._model = OpenAiModel(
             model_name=self.model_name,
             api_key=self.api_key,
-            temperature=self.temperature,
+            generation_args=self.generation_args,
         )
         return self._model
 
@@ -440,10 +434,13 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         self,
         model_name: str,
         out_path: str,
-        model_args: Optional[dict] = None,
-        token_args: Optional[dict] = None,
+        config: Optional[HuggingFaceConfig] = None,
+        model_args: Optional[Dict[str, Any]] = None,
+        tokenizer_args: Optional[Dict[str, Any]] = None,
+        generation_args: Optional[Dict[str, Any]] = None,
         batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         auto_model: str = "AutoModelForCausalLM",
+        labels: Optional[List[str]] = None,
     ):
         """
         Arguments:
@@ -451,19 +448,35 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             auto_model: str representing the AutoModel class
             out_path: str representing the path to the output file
             model_args: dict representing the model arguments
-            token_args: dict representing the token arguments
+            tokenizer_args: dict representing the token arguments
         """
         super().__init__(
             model_name=model_name,
             model_lib="huggingface",
-            model_args=model_args,
+            config=config or HuggingFaceConfig(),
             out_path=out_path,
             batch_size=batch_size,
+            labels=labels,
         )
-        if token_args is None:
-            self.token_args = {}
-        else:
-            self.token_args = token_args
+        self.model_args = (
+            self.config.model_args
+            if hasattr(
+                self.config,
+                "model_args",
+            )
+            else model_args or {}
+        )
+        self.tokenizer_args = (
+            self.config.tokenizer_args
+            if hasattr(
+                self.config,
+                "tokenizer_args",
+            )
+            else tokenizer_args or {}
+        )
+        self.generation_args = generation_args or self.config.to_dict()
+
+        # TODO validate all args
 
         self.auto_model = auto_model
 
@@ -474,7 +487,8 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             self._model = HFAutoModelForCausalLM(
                 model_name=self.model_name,
                 model_args=self.model_args,
-                token_args=self.token_args,
+                tokenizer_args=self.tokenizer_args,
+                generation_args=self.generation_args,
             )
             return self._model
 
@@ -484,7 +498,8 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             self._model = HFAutoModelForSeq2SeqLM(
                 model_name=self.model_name,
                 model_args=self.model_args,
-                token_args=self.token_args,
+                tokenizer_args=self.tokenizer_args,
+                generation_args=self.generation_args,
             )
             return self._model
 
@@ -500,9 +515,11 @@ class VllmCsvAnnotator(CsvAnnotator):
         self,
         model_name: str,
         out_path: str,
-        model_args: Optional[dict] = None,
-        token_args: Optional[dict] = None,
+        config: Optional[VllmConfig] = None,
+        model_args: Optional[Dict[str, Any]] = None,
+        generation_args: Optional[Dict[str, Any]] = None,
         batch_size: Optional[int] = None,
+        labels: Optional[List[str]] = None,
     ):
         """
         Arguments:
@@ -511,14 +528,23 @@ class VllmCsvAnnotator(CsvAnnotator):
         super().__init__(
             model_name=model_name,
             model_lib="vllm",
-            model_args=model_args,
+            config=config or VllmConfig(),
             out_path=out_path,
             batch_size=batch_size,
+            labels=labels,
         )
-        if token_args is None:
-            self.token_args = {}
-        else:
-            self.token_args = token_args
+
+        self.model_args = (
+            self.config.model_args
+            if hasattr(
+                self.config,
+                "model_args",
+            )
+            else model_args or {}
+        )
+        self.generation_args = generation_args or self.config.to_dict()
+
+        # TODO validate all args
 
     def _load_model(self):
         # lazy import to avoid circular imports
@@ -527,6 +553,6 @@ class VllmCsvAnnotator(CsvAnnotator):
         self._model = VllmModel(
             model_name=self.model_name,
             model_args=self.model_args,
-            param_args=self.token_args,
+            generation_args=self.generation_args,
         )
         return self._model

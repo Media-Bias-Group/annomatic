@@ -24,13 +24,13 @@ class ModelConfig(ABC):
 
     def to_dict(self, exclude_kwargs: bool = False) -> Dict[str, Any]:
         """
-        Convert the model config to a dictionary.
+        Convert the model generation config to a dictionary.
 
         Values that are different from the values set in the __init__ method
         are included in the dictionary, and the kwargs are flattened.
 
         Returns:
-            dict: A dictionary representing the model configuration.
+            dict: A dictionary representing the model generation config.
         """
         default_values = self.get_default_values()
         config_dict = {}
@@ -68,7 +68,7 @@ class OpenAiConfig(ModelConfig):
         temperature: float = 1.0,
         top_p: float = 1.0,
         user: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.frequency_penalty = frequency_penalty
@@ -106,7 +106,7 @@ class HuggingFaceConfig(ModelConfig):
     for the HuggingFace models.
 
     Along with the generation hyperparams, the class also holds the
-    load_args and the token_args that are used to initialize the model and
+    model_args and the tokenizer_args that are used to initialize the model and
     tokenizer.
 
     The default values are aligned with the default of the generation method
@@ -130,9 +130,9 @@ class HuggingFaceConfig(ModelConfig):
         no_repeat_ngram_size: int = 0,
         bad_words_ids: Optional[List[int]] = None,
         num_return_sequences: int = 1,
-        load_args: Optional[Dict[str, Any]] = None,
-        token_args: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        model_args: Optional[Dict[str, Any]] = None,
+        tokenizer_args: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.max_length = max_length
@@ -148,8 +148,8 @@ class HuggingFaceConfig(ModelConfig):
         self.no_repeat_ngram_size = no_repeat_ngram_size
         self.bad_words_ids = bad_words_ids
         self.num_return_sequences = num_return_sequences
-        self.load_args = load_args
-        self.token_args = token_args
+        self.model_args = model_args
+        self.tokenizer_args = tokenizer_args
 
     @staticmethod
     def get_default_values() -> Dict[str, Any]:
@@ -175,7 +175,7 @@ class VllmConfig(ModelConfig):
     VllmConfig is a class is a wrapper for the configuration of the
     SamplingParams class of the VLLM library.
 
-    Alongside these parameters, the class also holds the load_args
+    Alongside these parameters, the class also holds the model_args
     that are used to initialize the LLM.
     """
 
@@ -198,8 +198,8 @@ class VllmConfig(ModelConfig):
         logprobs: Optional[int] = None,
         prompt_logprobs: Optional[int] = None,
         skip_special_tokens: bool = True,
-        load_args: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        model_args: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.n = n
@@ -219,7 +219,7 @@ class VllmConfig(ModelConfig):
         self.logprobs = logprobs
         self.prompt_logprobs = prompt_logprobs
         self.skip_special_tokens = skip_special_tokens
-        self.load_args = load_args
+        self.model_args = model_args
 
     @staticmethod
     def get_default_values() -> dict:

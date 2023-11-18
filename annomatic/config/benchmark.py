@@ -29,8 +29,8 @@ class HuggingFaceBenchmarkConfig(HuggingFaceConfig):
 
     def __init__(
         self,
-        load_args: Optional[Dict[str, Any]] = None,
-        token_args: Optional[Dict[str, Any]] = None,
+        model_args: Optional[Dict[str, Any]] = None,
+        tokenizer_args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         if (
@@ -43,8 +43,8 @@ class HuggingFaceBenchmarkConfig(HuggingFaceConfig):
         super().__init__(
             temperature=0.2,
             do_sample=True,
-            load_args=load_args,
-            token_args=token_args,
+            model_args=model_args,
+            tokenizer_args=tokenizer_args,
             **kwargs,
         )
 
@@ -60,7 +60,7 @@ class VllmBenchmarkConfig(VllmConfig):
 
     def __init__(
         self,
-        load_args: Optional[Dict[str, Any]] = None,
+        model_args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         if kwargs.get("temperature") is not None:
@@ -70,6 +70,6 @@ class VllmBenchmarkConfig(VllmConfig):
 
         super().__init__(
             temperature=0.2,
-            load_args=load_args,
+            model_args=model_args,
             **kwargs,
         )

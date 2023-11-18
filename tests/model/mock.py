@@ -95,7 +95,6 @@ class FakeHFAutoModelForCausalLM(HFAutoModelForCausalLM):
     def _call_llm_and_decode(
         self,
         model_inputs,
-        output_length: int,
     ) -> List[str]:
         return [
             "mocked output",
@@ -116,7 +115,6 @@ class FakeHFAutoModelForSeq2SeqLM(HFAutoModelForSeq2SeqLM):
     def _call_llm_and_decode(
         self,
         model_inputs,
-        output_length: int,
     ) -> List[str]:
         return [
             "mocked output",
