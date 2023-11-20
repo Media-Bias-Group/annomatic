@@ -5,9 +5,14 @@ import pytest
 from cfgv import Optional
 
 from annomatic.annotator.csv_annotator import CsvAnnotator, VllmCsvAnnotator
+from annomatic.config.base import ModelConfig
 from annomatic.llm import Response, ResponseList
 from annomatic.prompt.prompt import Prompt
-from tests.model.mock import FakeHFAutoModelForCausalLM, FakeOpenAiModel, FakeVllmModel
+from tests.model.mock import (
+    FakeHFAutoModelForCausalLM,
+    FakeOpenAiModel,
+    FakeVllmModel,
+)
 
 
 class FakeOpenAiCSVAnnotator(CsvAnnotator):
@@ -23,6 +28,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
         model_lib: str = " ",
         model_name: str = " ",
         model_args: Optional[dict] = None,
+        config: Optional[ModelConfig] = None,
         batch_size: Optional[int] = 5,
         out_path: str = "",
         **kwargs,
@@ -32,6 +38,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
             model_lib=model_lib,
             model_args=model_args,
             out_path=out_path,
+            config=config,
             batch_size=batch_size,
             **kwargs,
         )
@@ -74,6 +81,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
         model_args: Optional[dict] = None,
         batch_size: Optional[int] = 5,
         out_path: str = "",
+        config: Optional[ModelConfig] = None,
         labels: Optional[list] = None,
         **kwargs,
     ):
@@ -82,6 +90,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
             model_lib=model_lib,
             model_args=model_args,
             out_path=out_path,
+            config=config,
             batch_size=batch_size,
             labels=labels,
             **kwargs,
@@ -124,6 +133,7 @@ class FakeVllmCsvAnnotator(VllmCsvAnnotator):
         model_args: Optional[dict] = None,
         batch_size: Optional[int] = 5,
         out_path: str = "",
+        config=None,
         **kwargs,
     ):
         super().__init__(
@@ -131,6 +141,7 @@ class FakeVllmCsvAnnotator(VllmCsvAnnotator):
             model_args=model_args,
             out_path=out_path,
             batch_size=batch_size,
+            config=config,
         )
 
     def _load_model(self):
@@ -166,7 +177,9 @@ def test_set_data_prompt_matching():
         "Output: "
     )
     annotator.set_prompt(prompt=template)
-    df = pd.read_csv("./tests/data/input.csv")
+    df = pd.read_csv(
+        "./tests/data/input.csv",
+    )
     annotator.set_data(
         data=df,
         in_col="input",
@@ -187,7 +200,9 @@ def test_set_data_prompt_raise_value_error():
         "Output: "
     )
     annotator.set_prompt(prompt=template)
-    df = pd.read_csv("./tests/data/input.csv")
+    df = pd.read_csv(
+        "./tests/data/input.csv",
+    )
     with pytest.raises(ValueError) as e_info:
         annotator.set_data(
             data=df,
@@ -230,7 +245,9 @@ def test_set_prompt_prompt():
 def test_OpenAIAnnotation_annotate():
     # delete file if exists
     try:
-        os.remove("./tests/data/output.csv")
+        os.remove(
+            "./tests/data/output.csv",
+        )
     except OSError:
         pass
 
@@ -238,7 +255,9 @@ def test_OpenAIAnnotation_annotate():
         model_name="model",
         out_path="./tests/data/output.csv",
     )
-    data = pd.read_csv("./tests/data/input.csv")
+    data = pd.read_csv(
+        "./tests/data/input.csv",
+    )
 
     template = (
         "Instruction: '{input}'"
@@ -257,20 +276,28 @@ def test_OpenAIAnnotation_annotate():
 
     annotator.annotate()
 
-    assert os.path.exists("./tests/data/output.csv")
+    assert os.path.exists(
+        "./tests/data/output.csv",
+    )
 
-    output = pd.read_csv("./tests/data/output.csv")
+    output = pd.read_csv(
+        "./tests/data/output.csv",
+    )
     assert output.shape[0] == data.shape[0]
 
 
 def test_Huggingface_annotate():
     # delete file if exists
     try:
-        os.remove("./tests/data/output.csv")
+        os.remove(
+            "./tests/data/output.csv",
+        )
     except OSError:
         pass
 
-    data = pd.read_csv("./tests/data/input.csv")
+    data = pd.read_csv(
+        "./tests/data/input.csv",
+    )
 
     annotator = FakeHuggingFaceCsvAnnotator(
         model_name="model",
@@ -293,19 +320,27 @@ def test_Huggingface_annotate():
     )
 
     annotator.annotate()
-    assert os.path.exists("./tests/data/output.csv")
+    assert os.path.exists(
+        "./tests/data/output.csv",
+    )
 
-    output = pd.read_csv("./tests/data/output.csv")
+    output = pd.read_csv(
+        "./tests/data/output.csv",
+    )
     assert output.shape[0] == data.shape[0]
 
 
 def test_vllm_annotate():
     # delete file if exists
     try:
-        os.remove("./tests/data/output.csv")
+        os.remove(
+            "./tests/data/output.csv",
+        )
     except OSError:
         pass
-    data = pd.read_csv("./tests/data/input.csv")
+    data = pd.read_csv(
+        "./tests/data/input.csv",
+    )
 
     annotator = FakeVllmCsvAnnotator(
         model_name="model",
@@ -323,20 +358,28 @@ def test_vllm_annotate():
     annotator.set_prompt(prompt=template)
     annotator._load_model()
     annotator.annotate(data=data, in_col="input")
-    assert os.path.exists("./tests/data/output.csv")
+    assert os.path.exists(
+        "./tests/data/output.csv",
+    )
 
-    output = pd.read_csv("./tests/data/output.csv")
+    output = pd.read_csv(
+        "./tests/data/output.csv",
+    )
     assert output.shape[0] == data.shape[0]
 
 
 def test_huggingface_annotate_batch():
     # delete file if exists
     try:
-        os.remove("./tests/data/output.csv")
+        os.remove(
+            "./tests/data/output.csv",
+        )
     except OSError:
         pass
 
-    inp = pd.read_csv("./tests/data/input.csv")
+    inp = pd.read_csv(
+        "./tests/data/input.csv",
+    )
 
     annotator = FakeHuggingFaceCsvAnnotator(
         model_name="model",
@@ -362,10 +405,14 @@ def test_huggingface_annotate_batch():
 def test_openai_annotate_batch():
     # delete file if exists
     try:
-        os.remove("./tests/data/output.csv")
+        os.remove(
+            "./tests/data/output.csv",
+        )
     except OSError:
         pass
-    inp = pd.read_csv("./tests/data/input.csv")
+    inp = pd.read_csv(
+        "./tests/data/input.csv",
+    )
 
     annotator = FakeOpenAiCSVAnnotator(
         model_name="model",
@@ -391,10 +438,14 @@ def test_openai_annotate_batch():
 def test_vllm_annotate_batch():
     # delete file if exists
     try:
-        os.remove("./tests/data/output.csv")
+        os.remove(
+            "./tests/data/output.csv",
+        )
     except OSError:
         pass
-    inp = pd.read_csv("./tests/data/input.csv")
+    inp = pd.read_csv(
+        "./tests/data/input.csv",
+    )
 
     annotator = FakeVllmCsvAnnotator(
         model_name="model",
