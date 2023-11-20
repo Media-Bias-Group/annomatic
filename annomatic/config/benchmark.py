@@ -6,7 +6,7 @@ from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 class OpenAiBenchmarkConfig(OpenAiConfig):
     """
     OpenAiBenchmarkConfig is a class that holds the configuration for
-    the HuggingFace models that use for the benchmarking of the models.
+    the OpenAi models that use for the benchmarking of the models.
 
     The temperature is set to 0.2.
 
@@ -52,7 +52,7 @@ class HuggingFaceBenchmarkConfig(HuggingFaceConfig):
 class VllmBenchmarkConfig(VllmConfig):
     """
     VllmBenchmarkConfig is a class that holds the configuration for
-    the HuggingFace models that use for the benchmarking of the models.
+    the Vllm models that use for the benchmarking of the models.
 
     The temperature is set to 0.2 and do_sample to True.
 
