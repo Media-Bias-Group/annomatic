@@ -542,6 +542,7 @@ class VllmCsvAnnotator(CsvAnnotator):
                 self.config,
                 "model_args",
             )
+            and self.config.model_args is not None
             else model_args or {}
         )
         self.generation_args = generation_args or self.config.to_dict()
