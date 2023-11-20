@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from annomatic.llm import ResponseList
 from annomatic.llm.base import Model
+from annomatic.llm.util import build_message
 
 try:
     from transformers import (
@@ -33,17 +34,27 @@ class HuggingFaceModel(Model, ABC):
         model_args: Optional[Dict[str, Any]] = None,
         tokenizer_args: Optional[Dict[str, Any]] = None,
         generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+        use_chat_template: bool = False,
     ):
         super().__init__(model_name=model_name)
 
         self.model_args = model_args or {}
         self.tokenizer_args = tokenizer_args or {}
         self.generation_args = generation_args or {}
+        self.system_prompt = system_prompt
+        self.use_chat_template = use_chat_template
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
             **self.tokenizer_args,
         )
+
+        if self.use_chat_template and self.tokenizer.chat_template is None:
+            LOGGER.warning(
+                "Tokenizer doesn't have a chat template! Use concatenation "
+                "instead.",
+            )
 
         self.model: Optional[
             Union[AutoModelForCausalLM, AutoModelForSeq2SeqLM]
@@ -82,6 +93,9 @@ class HuggingFaceModel(Model, ABC):
                 self.tokenizer.pad_token_id = pad_token_id
         else:
             padding = False
+
+        # add system prompt if needed
+        messages = self._add_system_prompt(messages)
 
         return self._predict(messages=messages, padding=padding)
 
@@ -132,6 +146,40 @@ class HuggingFaceModel(Model, ABC):
             skip_special_tokens=True,
         )
 
+    def _add_system_prompt(self, messages: List[str]) -> List[str]:
+        """
+        Validates the system prompt and adds it to the messages if needed.
+
+        Args:
+            messages: List of string messages to predict the response for.
+
+        Returns:
+            The messages with the system prompt added if needed.
+        """
+        if self.system_prompt is None:
+            return messages
+        else:
+            if (
+                self.use_chat_template
+                and self.tokenizer.chat_template is not None
+            ):
+                system_prompt = build_message(self.system_prompt, "system")
+                messages_with_system = [
+                    self.tokenizer.apply_chat_template(
+                        [system_prompt, build_message(message, "user")],
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
+                    for message in messages
+                ]
+            else:
+                messages_with_system = [
+                    self.system_prompt + "\n\n" + message
+                    for message in messages
+                ]
+
+        return messages_with_system
+
 
 class HFAutoModelForCausalLM(HuggingFaceModel):
     """
@@ -149,15 +197,19 @@ class HFAutoModelForCausalLM(HuggingFaceModel):
     def __init__(
         self,
         model_name: str,
-        model_args=None,
-        generation_args=None,
-        tokenizer_args=None,
+        model_args: Optional[Dict[str, Any]] = None,
+        tokenizer_args: Optional[Dict[str, Any]] = None,
+        generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+        use_chat_template: bool = False,
     ):
         super().__init__(
             model_name=model_name,
             model_args=model_args,
             tokenizer_args=tokenizer_args,
             generation_args=generation_args,
+            system_prompt=system_prompt,
+            use_chat_template=use_chat_template,
         )
 
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -188,15 +240,19 @@ class HFAutoModelForSeq2SeqLM(HuggingFaceModel):
     def __init__(
         self,
         model_name: str,
-        model_args=None,
-        generation_args=None,
-        tokenizer_args=None,
+        model_args: Optional[Dict[str, Any]] = None,
+        tokenizer_args: Optional[Dict[str, Any]] = None,
+        generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+        use_chat_template: bool = False,
     ):
         super().__init__(
             model_name=model_name,
             model_args=model_args,
             tokenizer_args=tokenizer_args,
             generation_args=generation_args,
+            system_prompt=system_prompt,
+            use_chat_template=use_chat_template,
         )
 
         self.model = AutoModelForSeq2SeqLM.from_pretrained(

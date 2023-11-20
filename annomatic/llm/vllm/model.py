@@ -25,6 +25,7 @@ class VllmModel(Model):
         model_name: str,
         model_args: Optional[Dict[str, Any]] = None,
         generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
     ):
         super().__init__(model_name=model_name)
 
@@ -33,6 +34,7 @@ class VllmModel(Model):
 
         self.model = LLM(model_name, **model_args)
         self.samplingParams = SamplingParams(**generation_args)
+        self.system_prompt = system_prompt
 
     def predict(self, messages: List[str]) -> ResponseList:
         """
@@ -47,6 +49,9 @@ class VllmModel(Model):
         """
         if self.model is None or self.samplingParams is None:
             raise ValueError("Model or SamplingParams not initialized.")
+
+        # add system prompt if needed
+        messages = self._add_system_prompt(messages=messages)
 
         return self._predict(messages=messages)
 
@@ -74,3 +79,21 @@ class VllmModel(Model):
             return self.model.generate(messages, self.samplingParams)
         except Exception as exception:
             raise ValueError("Error while calling vLLM model.") from exception
+
+    def _add_system_prompt(self, messages: List[str]) -> List[str]:
+        """
+        Validates the system prompt and adds it to the messages if needed.
+
+        Args:
+            messages: List of string messages to predict the response for.
+
+        Returns:
+            The messages with the system prompt added if needed.
+        """
+        if self.system_prompt is None:
+            return messages
+
+        else:
+            return [
+                self.system_prompt + "\n\n" + message for message in messages
+            ]

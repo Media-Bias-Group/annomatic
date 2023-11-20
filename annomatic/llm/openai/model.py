@@ -7,7 +7,8 @@ from annomatic.llm.base import (
     Response,
     ResponseList,
 )
-from annomatic.llm.openai.utils import _build_response, build_message
+from annomatic.llm.openai.util import _build_response
+from annomatic.llm.util import build_message
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class OpenAiModel(Model):
         self,
         api_key: str = "",
         model_name: str = "gpt-3.5-turbo",
+        system_prompt: Optional[str] = None,
         generation_args: Optional[dict[str, Any]] = None,
     ):
         """
@@ -72,11 +74,10 @@ class OpenAiModel(Model):
         super().__init__(model_name=model_name)
         if model_name in self.COMPLETION_ONLY:
             LOGGER.info("Warning. Legacy API used!")
+        valid_model(model_name=model_name)
 
-        self._model = valid_model(model_name=model_name)
+        self.system_prompt = system_prompt
         self.generation_args = generation_args or {}
-
-        self.system_prompt: Optional[dict[str, str]] = None
         if api_key == "":
             raise ValueError("No OPEN AI key given!")
 
@@ -129,7 +130,7 @@ class OpenAiModel(Model):
         if len(messages) > 1:
             raise ValueError("Batch messages are not supported!")
 
-        if self._model in self.COMPLETION_ONLY:
+        if self.model_name in self.COMPLETION_ONLY:
             api_response = self._call_completion_api(prompt=messages)
         else:
             messages = self.build_chat_messages(messages)
@@ -162,7 +163,7 @@ class OpenAiModel(Model):
         """
         try:
             return openai.Completion.create(
-                model=self._model,
+                model=self.model_name,
                 prompt=prompt,
                 **self.generation_args,
             )
@@ -181,7 +182,7 @@ class OpenAiModel(Model):
 
 
         Args:
-            messages: List of string representation of the given Prompts
+            messages: List of string representation of the given conversation
 
         Returns:
             The Completion object produced by the OpenAI Model
@@ -191,63 +192,12 @@ class OpenAiModel(Model):
 
         try:
             return openai.ChatCompletion.create(
-                model=self._model,
+                model=self.model_name,
                 messages=messages,
                 **self.generation_args,
             )
         except Exception as exception:
             _handle_open_ai_exception(exception)
-
-    def add_system_prompt(self, content: str):
-        """
-        Add an initial system prompt to the conversation.
-
-        This method adds a system prompt to the conversation
-        if the selected model supports it. Only models which supporting the new
-        Chat Completion are allowed to have system prompts.
-
-        If it is not possible to add a system prompt a warning message is
-        printed and no system prompt is added.
-
-        Arguments:
-            content: string containing the system prompt content.
-        """
-        if self._model not in self.COMPLETION_ONLY:
-            self.system_prompt = build_message(
-                content=content,
-                role="system",
-            )
-        else:
-            LOGGER.warning(
-                "The used model is a Legacy model. System prompt is NOT used!",
-            )
-
-    def build_messages(self, prompts: List[str]) -> List[dict[Any, Any]]:
-        """
-        Build a list o encoded messages for the OpenAI Library.
-
-        This function creates the messages list in the format specified in the
-        Chat Completions API provided by OpenAI.
-        https://platform.openai.com/docs/guides/gpt/chat-completions-api
-
-        The format is a list containing messages. The prompt given to this
-
-        Arguments:
-            prompts: content of the prompt, made by the user.
-
-        Returns:
-            list: A list of the individual conversations messages
-        """
-        messages = []
-        if self.system_prompt is not None:
-            messages.append(self.system_prompt)
-
-        for prompt in prompts:
-            messages.append(build_message(prompt))
-
-        return messages
-
-    # Deprecation Warning
 
     def build_chat_messages(self, prompts: List[str]):
         """
@@ -267,36 +217,9 @@ class OpenAiModel(Model):
         """
         messages = []
         if self.system_prompt is not None:
-            messages.append(self.system_prompt)
+            messages.append(build_message(self.system_prompt, "system"))
 
         for prompt in prompts:
-            messages.append(build_message(prompt))
+            messages.append(build_message(prompt, "user"))
 
         return messages
-
-    def _predict_chat(self, messages: List[str]):
-        """
-        Predict response for a list of prompts.
-
-        Arguments:
-            messages (List[str]): A list of prompts.
-
-        Returns:
-            Any: Predicted output based on the provided prompts.
-
-        Raises:
-            ValueError: If using a legacy model that does not support multiple
-            messages.
-        """
-
-        if len(messages) <= 1:
-            raise ValueError("Only more than  is supported")
-
-        if self._model in self.COMPLETION_ONLY:
-            raise ValueError(
-                "multiple messages for Legacy API not implemented!",
-            )
-
-        messages = self.build_chat_messages(messages)
-        api_response = self._call_chat_completions_api(messages=messages)
-        return _build_response(message=messages[0], api_response=api_response)

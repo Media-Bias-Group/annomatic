@@ -129,6 +129,7 @@ class FakeVllmModel(VllmModel):
     def __init__(self, model_name: str, model_args=None, param_args=None):
         self.model = "dummy"
         self.samplingParams = "Dummy"
+        self.system_prompt = None
 
     def _call_llm(self, messages: List[str]) -> list[RequestOutput]:
         common_request_id = "common_request"
