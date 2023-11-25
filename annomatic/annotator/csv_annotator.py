@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 from tqdm import tqdm
 
+from annomatic.annotator import util
 from annomatic.annotator.base import BaseAnnotator
 from annomatic.config.base import (
     HuggingFaceConfig,
@@ -28,10 +29,10 @@ class CsvAnnotator(BaseAnnotator):
         model_lib (str): Name of the model library.
         model_args (dict): Arguments for the model.
         batch_size (int): Size of the batch.
-        soft_parsing_labels (List[str]): List of labels that should be
-                                         parsed as soft labels.
+        labels (List[str]): List of labels that should be used for soft
+            parsing.
         out_path (str): Path to the output file.
-
+        kwargs: a dict containing additional arguments
     """
 
     def __init__(
@@ -257,7 +258,6 @@ class CsvAnnotator(BaseAnnotator):
 
             # if labels are known perform soft parsing
             if self._labels:
-                # ensure that labels that include are tested first
                 self._soft_parse(
                     df=output_df,
                     in_col="response",
@@ -277,24 +277,11 @@ class CsvAnnotator(BaseAnnotator):
         if self._labels is None:
             raise ValueError("Labels are not set!")
 
-        self._labels.sort(key=lambda x: len(x), reverse=True)
         df[parsed_col] = df[in_col].apply(
-            lambda x: self._parse_label(x),
+            lambda x: util.find_label(x, self._labels),
         )
-        df[parsed_col].fillna("?", inplace=True)
 
         return df
-
-    def _parse_label(self, response: str, default_label: str = "?") -> str:
-        if self._labels is None:
-            raise ValueError("Labels are not set!")
-
-        response_lower = response.lower()
-        for label in self._labels:
-            if label.lower() in response_lower:
-                return label
-
-        return default_label
 
     def _annotate_batch(self, batch: pd.DataFrame, **kwargs) -> List[dict]:
         """
