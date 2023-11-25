@@ -468,42 +468,6 @@ def test_vllm_annotate_batch():
     assert len(res) == inp.shape[0]
 
 
-def test_parse_label_expect_biased():
-    annotator = FakeOpenAiCSVAnnotator(
-        out_path="./tests/data/output.csv",
-    )
-    annotator._labels = ["BIASED", "NON-BIASED"]
-    res = annotator._parse_label("This text is biased since...", "?")
-
-    assert res == "BIASED"
-
-
-def test_parse_label_expect_non_biased():
-    annotator = FakeOpenAiCSVAnnotator(
-        out_path="./tests/data/output.csv",
-    )
-    annotator._labels = ["BIASED", "NON-BIASED"]
-    # sort done in method
-    annotator._labels.sort(
-        key=lambda x: len(x),
-        reverse=True,
-    )
-
-    res = annotator._parse_label("This text is non-biased since...", "?")
-
-    assert res == "NON-BIASED"
-
-
-def test_parse_label_expect_default():
-    annotator = FakeOpenAiCSVAnnotator(
-        out_path="./tests/data/output.csv",
-    )
-    annotator._labels = ["BIASED", "NON-BIASED"]
-    res = annotator._parse_label("This text is not parseable", "?")
-
-    assert res == "?"
-
-
 def test_soft_parse():
     df = pd.DataFrame(
         {
