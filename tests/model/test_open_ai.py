@@ -1,7 +1,7 @@
 import pytest
 
-from annomatic.llm.base import Response, ResponseList
-from annomatic.llm.openai.utils import build_message
+from annomatic.llm.base import ResponseList
+from annomatic.llm.util import build_message
 from tests.model.mock import (
     TEST_OPEN_AI_RESPONSE_CHAT,
     TEST_OPEN_AI_RESPONSE_LEGACY,
@@ -16,15 +16,6 @@ def test_message_system():
     assert exp_res == res
 
 
-def test_add_system_prompt():
-    model = FakeOpenAiModel()
-
-    exp_res = {"role": "system", "content": "This is a prompt!"}
-    model.add_system_prompt("This is a prompt!")
-
-    assert exp_res == model.system_prompt
-
-
 def test_build_messages_with_system():
     model = FakeOpenAiModel()
 
@@ -32,7 +23,7 @@ def test_build_messages_with_system():
         {"role": "system", "content": "This is a system prompt!"},
         {"role": "user", "content": "This is a prompt!"},
     ]
-    model.add_system_prompt("This is a system prompt!")
+    model.system_prompt = "This is a system prompt!"
     res = model.build_chat_messages(["This is a prompt!"])
 
     assert exp_res == res

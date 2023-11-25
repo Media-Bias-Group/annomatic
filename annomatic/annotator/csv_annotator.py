@@ -41,6 +41,7 @@ class CsvAnnotator(BaseAnnotator):
         config: ModelConfig,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
+        system_prompt: Optional[str] = None,
         out_path: str = "",
         **kwargs,
     ):
@@ -60,6 +61,7 @@ class CsvAnnotator(BaseAnnotator):
         self.batch_size = batch_size
 
         self._labels = labels
+        self.system_prompt = system_prompt
 
         # store input as a dataframe
         self._input: Optional[pd.DataFrame] = None
@@ -319,6 +321,7 @@ class CsvAnnotator(BaseAnnotator):
             messages = []
             for index, row in batch.iterrows():
                 kwargs[str(self.in_col)] = row[str(self.in_col)]
+
                 messages.append(self._prompt(**kwargs))
 
             responses = self._model_predict(messages)
@@ -387,6 +390,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         model_name: str = "gpt-3.5-turbo",
         config: Optional[OpenAiConfig] = None,
         generation_args: Optional[dict] = None,
+        system_prompt: Optional[str] = None,
         out_path: str = "",
         labels: Optional[List[str]] = None,
     ):
@@ -395,6 +399,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
             model_lib="openai",
             config=config or OpenAiConfig(),
             out_path=out_path,
+            system_prompt=system_prompt,
             batch_size=OpenAiCsvAnnotator.DEFAULT_BATCH_SIZE,
             labels=labels,
         )
@@ -438,8 +443,10 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
         model_args: Optional[Dict[str, Any]] = None,
         tokenizer_args: Optional[Dict[str, Any]] = None,
         generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
         batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         auto_model: str = "AutoModelForCausalLM",
+        use_chat_template: bool = False,
         labels: Optional[List[str]] = None,
     ):
         """
@@ -455,6 +462,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             model_lib="huggingface",
             config=config or HuggingFaceConfig(),
             out_path=out_path,
+            system_prompt=system_prompt,
             batch_size=batch_size,
             labels=labels,
         )
@@ -477,7 +485,7 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             else tokenizer_args or {}
         )
         self.generation_args = generation_args or self.config.to_dict()
-
+        self.use_chat_template = use_chat_template
         # TODO validate all args
 
         self.auto_model = auto_model
@@ -491,6 +499,8 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
                 model_args=self.model_args,
                 tokenizer_args=self.tokenizer_args,
                 generation_args=self.generation_args,
+                system_prompt=self.system_prompt,
+                use_chat_template=self.use_chat_template,
             )
             return self._model
 
@@ -502,6 +512,8 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
                 model_args=self.model_args,
                 tokenizer_args=self.tokenizer_args,
                 generation_args=self.generation_args,
+                system_prompt=self.system_prompt,
+                use_chat_template=self.use_chat_template,
             )
             return self._model
 
@@ -520,6 +532,7 @@ class VllmCsvAnnotator(CsvAnnotator):
         config: Optional[VllmConfig] = None,
         model_args: Optional[Dict[str, Any]] = None,
         generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
     ):
@@ -532,6 +545,7 @@ class VllmCsvAnnotator(CsvAnnotator):
             model_lib="vllm",
             config=config or VllmConfig(),
             out_path=out_path,
+            system_prompt=system_prompt,
             batch_size=batch_size,
             labels=labels,
         )
@@ -557,5 +571,6 @@ class VllmCsvAnnotator(CsvAnnotator):
             model_name=self.model_name,
             model_args=self.model_args,
             generation_args=self.generation_args,
+            system_prompt=self.system_prompt,
         )
         return self._model
