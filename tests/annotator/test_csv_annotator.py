@@ -185,7 +185,7 @@ def test_set_data_prompt_matching():
         input_column="input",
     )
 
-    assert annotator.input_column == "input"
+    assert annotator.data_variable == "input"
 
 
 def test_set_data_prompt_raise_value_error():
@@ -396,7 +396,7 @@ def test_huggingface_annotate_batch():
     )
     annotator.set_prompt(prompt=template)
     annotator._load_model()
-    annotator.input_column = "input"
+    annotator.data_variable = "input"
     res = annotator._annotate_batch(inp)
 
     assert len(res) == inp.shape[0]
@@ -429,7 +429,7 @@ def test_openai_annotate_batch():
     )
     annotator.set_prompt(prompt=template)
     annotator._load_model()
-    annotator.input_column = "input"
+    annotator.data_variable = "input"
     res = annotator._annotate_batch(inp)
 
     assert len(res) == inp.shape[0]
@@ -462,7 +462,7 @@ def test_vllm_annotate_batch():
     )
     annotator.set_prompt(prompt=template)
     annotator._load_model()
-    annotator.input_column = "input"
+    annotator.data_variable = "input"
     res = annotator._annotate_batch(inp)
 
     assert len(res) == inp.shape[0]

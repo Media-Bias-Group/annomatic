@@ -19,7 +19,7 @@ from annomatic.llm.base import Model, ResponseList
 LOGGER = logging.getLogger(__name__)
 
 
-class CsvAnnotator(BaseAnnotator, ModelLoadMixin):
+class CsvAnnotator(BaseAnnotator):
     """
     Base annotator class for models that stores the output to a csv file.
 
@@ -65,19 +65,17 @@ class CsvAnnotator(BaseAnnotator, ModelLoadMixin):
             **kwargs,
         )
 
-        self.input_column: Optional[str] = None
+        self.data_variable: Optional[str] = None
 
         self.out_path = out_path
         self._output_handler: Optional[CsvOutput] = CsvOutput(out_path)
 
-        self._model: Optional[Model] = None  # move to ModelLoadMixin
-
-    def _validate_input_variable(self) -> bool:
-        if self._prompt is None or self.input_column is None:
+    def _validate_data_variable(self) -> bool:
+        if self._prompt is None or self.data_variable is None:
             # no validation possible
             return True
 
-        return self.input_column in self._prompt.get_variables()
+        return self.data_variable in self._prompt.get_variables()
 
     def set_data(
         self,
@@ -96,9 +94,9 @@ class CsvAnnotator(BaseAnnotator, ModelLoadMixin):
         if self.data is not None:
             LOGGER.info("Input data is already set. Will be overwritten.")
 
-        self.input_column = input_column
+        self.data_variable = input_column
 
-        if not self._validate_input_variable():
+        if not self._validate_data_variable():
             raise ValueError("Input column does not occur in prompt!")
 
         if isinstance(data, pd.DataFrame):
@@ -223,21 +221,6 @@ class CsvAnnotator(BaseAnnotator, ModelLoadMixin):
 
         self._output_handler.write(output_data)
 
-    def _soft_parse(
-        self,
-        df: pd.DataFrame,
-        in_col: str,
-        parsed_col: str,
-    ) -> pd.DataFrame:
-        if self._labels is None:
-            raise ValueError("Labels are not set!")
-
-        df[parsed_col] = df[in_col].apply(
-            lambda x: util.find_label(x, self._labels),
-        )
-
-        return df
-
     def _annotate_batch(self, batch: pd.DataFrame, **kwargs) -> List[dict]:
         """
         Annotates the input CSV file and writes the annotated data to the
@@ -265,8 +248,8 @@ class CsvAnnotator(BaseAnnotator, ModelLoadMixin):
             for idx, response in enumerate(responses):
                 annotated_data.append(
                     {
-                        self.input_column: batch.iloc[idx][
-                            str(self.input_column)
+                        self.data_variable: batch.iloc[idx][
+                            str(self.data_variable)
                         ],
                         "response": response.answer,
                         "raw_data": response.data,
@@ -292,25 +275,10 @@ class CsvAnnotator(BaseAnnotator, ModelLoadMixin):
 
         messages = []
         for index, row in batch.iterrows():
-            kwargs[str(self.input_column)] = row[str(self.input_column)]
+            kwargs[str(self.data_variable)] = row[str(self.data_variable)]
             messages.append(self._prompt(**kwargs))
 
         return messages
-
-    def _model_predict(self, messages: List[str]) -> ResponseList:
-        """
-        Wrapper of the model predict method.
-
-        Args:
-            messages: List[str] representing the input messages.
-
-        Returns:
-            ResponseList: an object containing the Responses.
-        """
-        if self._model is None:
-            raise ValueError("Model is not initialized!")
-
-        return self._model.predict(messages=messages)
 
 
 class OpenAiCsvAnnotator(CsvAnnotator):
