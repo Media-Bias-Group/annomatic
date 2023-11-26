@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from annomatic.annotator import util
-from annomatic.annotator.base import BaseAnnotator
+from annomatic.annotator.base import BaseAnnotator, ModelLoadMixin
 from annomatic.config.base import (
     HuggingFaceConfig,
     ModelConfig,
@@ -20,7 +20,7 @@ from annomatic.prompt import Prompt
 LOGGER = logging.getLogger(__name__)
 
 
-class CsvAnnotator(BaseAnnotator):
+class CsvAnnotator(BaseAnnotator, ModelLoadMixin):
     """
     Base annotator class for models that stores the output to a csv file.
 
@@ -44,6 +44,7 @@ class CsvAnnotator(BaseAnnotator):
         labels: Optional[List[str]] = None,
         system_prompt: Optional[str] = None,
         out_path: str = "",
+        lib_args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         """
@@ -54,13 +55,13 @@ class CsvAnnotator(BaseAnnotator):
             out_path (str): Path to the output file.
             kwargs: a dict containing additional arguments
         """
+        super().__init__()
         self.config = config
         self.model_name = model_name
         self.out_path = out_path
         self.to_kwargs = False
         self.kwargs = kwargs
         self.batch_size = batch_size
-
         self._labels = labels
         self.system_prompt = system_prompt
 
@@ -72,6 +73,24 @@ class CsvAnnotator(BaseAnnotator):
         self.in_col: Optional[str] = None
         self._model: Optional[Model] = None
         self.model_lib = model_lib
+        self.lib_args = lib_args or {}
+
+    def update_config_generation_args(
+        self,
+        generation_args: Optional[Dict[str, Any]] = None,
+    ):
+        for key, value in (generation_args or {}).items():
+            if (
+                hasattr(self.config, key)
+                and getattr(
+                    self.config,
+                    key,
+                )
+                != value
+            ):
+                setattr(self.config, key, value)
+            else:
+                self.config.kwargs[key] = value
 
     def _validate_input_column(self) -> bool:
         if self._prompt is None or self.in_col is None:
@@ -153,35 +172,6 @@ class CsvAnnotator(BaseAnnotator):
                 "Invalid input type! " "Only Prompt or str is supported.",
             )
 
-    def _load_model(self):
-        """
-        Loads the model to the annotator. If a model is already loaded,
-        just return it.
-
-        This is a method that should be overridden by child classes.
-
-        Raises:
-            ValueError: If the model library is not supported.
-        """
-        # if model is already loaded, just return it
-        if self._model is not None:
-            return self._model
-
-        # if is subclass use dedicated load method
-        if (
-            issubclass(self.__class__, CsvAnnotator)
-            and self.__class__ is not CsvAnnotator
-        ):
-            super(self.__class__, self)._load_model()
-
-        else:
-            # TODO own exception
-            raise ValueError(
-                f"Model library {self.model_lib} is not supported!",
-            )
-
-        return self._model
-
     def annotate(
         self,
         data: Union[pd.DataFrame, str] = None,
@@ -213,7 +203,13 @@ class CsvAnnotator(BaseAnnotator):
         self._validate_labels(**kwargs)
 
         if self._model is None:
-            self._load_model()
+            self._load_model(
+                model_name=self.model_name,
+                model_lib=self.model_lib,
+                config=self.config,
+                system_prompt=self.system_prompt,
+                **self.lib_args,
+            )
 
         # TODO: add return_df if True return the annotated data as a DataFrame
         self._annotate(**kwargs)
@@ -229,7 +225,6 @@ class CsvAnnotator(BaseAnnotator):
             kwargs: a dict containing the input variables for templates
         """
         output_data = []
-
         try:
             total_rows = self._input.shape[0]
             LOGGER.info(f"Starting Annotation of {total_rows}")
@@ -308,7 +303,6 @@ class CsvAnnotator(BaseAnnotator):
             messages = []
             for index, row in batch.iterrows():
                 kwargs[str(self.in_col)] = row[str(self.in_col)]
-
                 messages.append(self._prompt(**kwargs))
 
             responses = self._model_predict(messages)
@@ -326,7 +320,6 @@ class CsvAnnotator(BaseAnnotator):
             return annotated_data
 
         except Exception as exception:
-            # TODO introduce a custom exception
             LOGGER.error(f"Prediction error: {str(exception)}")
             return []
 
@@ -384,6 +377,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         super().__init__(
             model_name=model_name,
             model_lib="openai",
+            lib_args={"api_key": api_key},
             config=config or OpenAiConfig(),
             out_path=out_path,
             system_prompt=system_prompt,
@@ -391,20 +385,11 @@ class OpenAiCsvAnnotator(CsvAnnotator):
             labels=labels,
         )
 
-        self.generation_args = generation_args or self.config.to_dict()
-
+        # TODO CM update only if different from config
+        self.update_config_generation_args(generation_args)
         self.api_key = api_key
-        self.batch_size = OpenAiCsvAnnotator.DEFAULT_BATCH_SIZE
 
-    def _load_model(self):
-        from annomatic.llm.openai import OpenAiModel
-
-        self._model = OpenAiModel(
-            model_name=self.model_name,
-            api_key=self.api_key,
-            generation_args=self.generation_args,
-        )
-        return self._model
+        self.lib_args = {"api_key": api_key}
 
 
 class HFAutoModels(Enum):
@@ -441,68 +426,47 @@ class HuggingFaceCsvAnnotator(CsvAnnotator):
             model_name: str representing the Name of the HuggingFace model
             auto_model: str representing the AutoModel class
             out_path: str representing the path to the output file
-            model_args: dict representing the model arguments
+            model_args: dict representing the model 'arguments'
             tokenizer_args: dict representing the token arguments
         """
         super().__init__(
             model_name=model_name,
             model_lib="huggingface",
+            lib_args={
+                "auto_model": auto_model,
+                "use_chat_template": use_chat_template,
+            },
             config=config or HuggingFaceConfig(),
             out_path=out_path,
             system_prompt=system_prompt,
             batch_size=batch_size,
             labels=labels,
         )
-        self.model_args = (
-            self.config.model_args
-            if hasattr(
-                self.config,
-                "model_args",
+
+        # Override values in config
+        if hasattr(self.config, "model_args"):
+            self.config.model_args = (
+                getattr(
+                    self.config,
+                    "model_args",
+                    {},
+                )
+                or {}
             )
-            and self.config.model_args is not None
-            else model_args or {}
-        )
-        self.tokenizer_args = (
-            self.config.tokenizer_args
-            if hasattr(
-                self.config,
-                "tokenizer_args",
+            self.config.model_args.update(model_args or {})
+
+        if hasattr(self.config, "tokenizer_args"):
+            self.config.tokenizer_args = (
+                getattr(
+                    self.config,
+                    "tokenizer_args",
+                    {},
+                )
+                or {}
             )
-            and self.config.tokenizer_args is not None
-            else tokenizer_args or {}
-        )
-        self.generation_args = generation_args or self.config.to_dict()
-        self.use_chat_template = use_chat_template
-        # TODO validate all args
+            self.config.tokenizer_args.update(tokenizer_args or {})
 
-        self.auto_model = auto_model
-
-    def _load_model(self):
-        if self.auto_model == "AutoModelForCausalLM":
-            from annomatic.llm.huggingface import HFAutoModelForCausalLM
-
-            self._model = HFAutoModelForCausalLM(
-                model_name=self.model_name,
-                model_args=self.model_args,
-                tokenizer_args=self.tokenizer_args,
-                generation_args=self.generation_args,
-                system_prompt=self.system_prompt,
-                use_chat_template=self.use_chat_template,
-            )
-            return self._model
-
-        elif self.auto_model == "AutoModelForSeq2SeqLM":
-            from annomatic.llm.huggingface import HFAutoModelForSeq2SeqLM
-
-            self._model = HFAutoModelForSeq2SeqLM(
-                model_name=self.model_name,
-                model_args=self.model_args,
-                tokenizer_args=self.tokenizer_args,
-                generation_args=self.generation_args,
-                system_prompt=self.system_prompt,
-                use_chat_template=self.use_chat_template,
-            )
-            return self._model
+        self.update_config_generation_args(generation_args)
 
 
 class VllmCsvAnnotator(CsvAnnotator):
@@ -530,6 +494,7 @@ class VllmCsvAnnotator(CsvAnnotator):
         super().__init__(
             model_name=model_name,
             model_lib="vllm",
+            lib_args={},
             config=config or VllmConfig(),
             out_path=out_path,
             system_prompt=system_prompt,
@@ -537,27 +502,15 @@ class VllmCsvAnnotator(CsvAnnotator):
             labels=labels,
         )
 
-        self.model_args = (
-            self.config.model_args
-            if hasattr(
-                self.config,
-                "model_args",
+        if hasattr(self.config, "model_args"):
+            self.config.model_args = (
+                getattr(
+                    self.config,
+                    "model_args",
+                    {},
+                )
+                or {}
             )
-            and self.config.model_args is not None
-            else model_args or {}
-        )
-        self.generation_args = generation_args or self.config.to_dict()
+            self.config.model_args.update(model_args or {})
 
-        # TODO validate all args
-
-    def _load_model(self):
-        # lazy import to avoid circular imports
-        from annomatic.llm.vllm import VllmModel
-
-        self._model = VllmModel(
-            model_name=self.model_name,
-            model_args=self.model_args,
-            generation_args=self.generation_args,
-            system_prompt=self.system_prompt,
-        )
-        return self._model
+        self.update_config_generation_args(generation_args)

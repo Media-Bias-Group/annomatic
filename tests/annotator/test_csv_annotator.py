@@ -59,7 +59,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
             * len(batch),
         )
 
-    def _load_model(self):
+    def _load_model(self, **kwargs):
         """
         Mocking the model loading
         """
@@ -111,7 +111,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
             * len(batch),
         )
 
-    def _load_model(self):
+    def _load_model(self, **kwargs):
         """
         Mocking the model loading
         """
