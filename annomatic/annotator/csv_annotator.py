@@ -3,10 +3,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
-from tqdm import tqdm
 
-from annomatic.annotator import util
-from annomatic.annotator.base import BaseAnnotator, ModelLoadMixin
+from annomatic.annotator.base import BaseAnnotator
 from annomatic.config.base import (
     HuggingFaceConfig,
     ModelConfig,
@@ -14,7 +12,6 @@ from annomatic.config.base import (
     VllmConfig,
 )
 from annomatic.io import CsvInput, CsvOutput
-from annomatic.llm.base import Model, ResponseList
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,8 +62,6 @@ class CsvAnnotator(BaseAnnotator):
             **kwargs,
         )
 
-        self.data_variable: Optional[str] = None
-
         self.out_path = out_path
         self._output_handler: Optional[CsvOutput] = CsvOutput(out_path)
 
@@ -80,7 +75,7 @@ class CsvAnnotator(BaseAnnotator):
     def set_data(
         self,
         data: Union[pd.DataFrame, str],
-        input_column: str = "input",
+        data_variable: str = "input",
         sep: str = ",",
     ):
         """
@@ -88,13 +83,13 @@ class CsvAnnotator(BaseAnnotator):
 
         Args:
             data: Union[pd.DataFrame, str] representing the input data.
-            input_column: str representing the name of the input column.
+            data_variable: str representing the name of the input column.
             sep: str representing the separator for the CSV file.
         """
         if self.data is not None:
             LOGGER.info("Input data is already set. Will be overwritten.")
 
-        self.data_variable = input_column
+        self.data_variable = data_variable
 
         if not self._validate_data_variable():
             raise ValueError("Input column does not occur in prompt!")
@@ -130,7 +125,7 @@ class CsvAnnotator(BaseAnnotator):
         if data is not None:
             self.set_data(
                 data=data,
-                input_column=kwargs.get("in_col", "input"),
+                data_variable=kwargs.get("data_variable", "input"),
             )
 
         if self._prompt is None:
@@ -149,60 +144,6 @@ class CsvAnnotator(BaseAnnotator):
 
         self._annotate(**kwargs)
 
-    def _annotate(
-        self,
-        **kwargs,
-    ):
-        """
-        Annotates the input data and writes the annotated data to the
-        output CSV file.
-
-        Assumes that data and prompt is set.
-
-        Args:
-            kwargs: a dict containing the input variables for templates
-        """
-        output_data = []
-        try:
-            total_rows = self.get_num_samples()
-            num_batches = self._num_batches(total_rows)
-
-            LOGGER.info(f"Starting Annotation of {total_rows}")
-            for idx in tqdm(range(num_batches)):
-                batch = self.data.iloc[
-                    idx * self.batch_size : (idx + 1) * self.batch_size
-                ]
-                entries = self._annotate_batch(batch, **kwargs)
-                if entries:
-                    output_data.extend(entries)
-
-            # handle rest of the data
-            if num_batches * self.batch_size < total_rows:
-                batch = self.data.iloc[num_batches * self.batch_size :]
-                entries = self._annotate_batch(batch, **kwargs)
-                if entries:
-                    output_data.extend(entries)
-
-        except Exception as read_error:
-            # Handle the input reading error
-            LOGGER.error(f"Input reading error: {str(read_error)}")
-
-        LOGGER.info("Annotation done!")
-        LOGGER.info(f"Successfully annotated {len(output_data)} rows.")
-
-        try:
-            output_df = pd.DataFrame(output_data)
-            # if labels are known perform soft parsing
-            if self._labels:
-                self._soft_parse(
-                    df=output_df,
-                    in_col="response",
-                    parsed_col="label",
-                )
-            self.store_annotated_data(output_df)
-        except Exception as write_error:
-            LOGGER.error(f"Output writing error: {str(write_error)}")
-
     def get_num_samples(self):
         """
         Returns the number of data instances to be annotated.
@@ -220,47 +161,6 @@ class CsvAnnotator(BaseAnnotator):
             raise ValueError("Output handler is not set!")
 
         self._output_handler.write(output_data)
-
-    def _annotate_batch(self, batch: pd.DataFrame, **kwargs) -> List[dict]:
-        """
-        Annotates the input CSV file and writes the annotated data to the
-        output CSV file.
-
-        Args:
-            batch: pd.DataFrame representing the input data.
-            kwargs: a dict containing the input variables for templates
-
-        Returns:
-            List[dict]: a list of dicts containing the annotated data
-        """
-
-        if self._model is None or self._prompt is None:
-            raise ValueError(
-                "Model or prompt is not set! "
-                "Please call set_data and set_prompt before annotate.",
-            )
-
-        try:
-            messages = self.fill_prompt(batch=batch, **kwargs)
-            responses = self._model_predict(messages)
-
-            annotated_data = []
-            for idx, response in enumerate(responses):
-                annotated_data.append(
-                    {
-                        self.data_variable: batch.iloc[idx][
-                            str(self.data_variable)
-                        ],
-                        "response": response.answer,
-                        "raw_data": response.data,
-                        "query": response.query,
-                    },
-                )
-            return annotated_data
-
-        except Exception as exception:
-            LOGGER.error(f"Prediction error: {str(exception)}")
-            return []
 
     def fill_prompt(self, batch: pd.DataFrame, **kwargs) -> List[str]:
         """
@@ -311,7 +211,6 @@ class OpenAiCsvAnnotator(CsvAnnotator):
             labels=labels,
         )
 
-        # TODO CM update only if different from config
         self.update_config_generation_args(generation_args)
         self.api_key = api_key
 
