@@ -167,11 +167,18 @@ class BaseAnnotator(ModelLoadMixin, ABC):
         self._prompt: Optional[Prompt] = None
 
     @abstractmethod
-    def annotate(self, **kwargs):
+    def annotate(
+        self,
+        data: Optional[Any] = None,
+        return_df: bool = False,
+        **kwargs,
+    ):
         """
         Annotates the input data and stores the annotated data.
 
         Args:
+            data: the input data
+            return_df: bool indicating if the annotated data should be returned
             kwargs: a dict containing the input variables for prompt templates
         """
         raise NotImplementedError()
@@ -317,16 +324,18 @@ class BaseAnnotator(ModelLoadMixin, ABC):
     def _annotate(
         self,
         **kwargs,
-    ):
+    ) -> Optional[pd.DataFrame]:
         """
-        Annotates the input data and writes the annotated data to the
-        output CSV file.
-
+        Annotates the input data and returns it as a DataFrame.
         Assumes that data and prompt is set.
 
         Args:
             kwargs: a dict containing the input variables for templates
         """
+
+        if self.data is None:
+            raise ValueError("Data is not set!")
+
         output_data = []
         try:
             total_rows = self.get_num_samples()
@@ -357,6 +366,11 @@ class BaseAnnotator(ModelLoadMixin, ABC):
 
         try:
             output_df = pd.DataFrame(output_data)
+        except Exception as df_error:
+            LOGGER.error(f"Output dataframe error: {str(df_error)}")
+            return None
+
+        try:
             # if labels are known perform soft parsing
             if self._labels:
                 self._soft_parse(
@@ -365,8 +379,11 @@ class BaseAnnotator(ModelLoadMixin, ABC):
                     parsed_col="label",
                 )
             self.store_annotated_data(output_df)
+            return output_df
+
         except Exception as write_error:
             LOGGER.error(f"Output writing error: {str(write_error)}")
+            return output_df
 
     def _annotate_batch(self, batch: pd.DataFrame, **kwargs) -> List[dict]:
         """

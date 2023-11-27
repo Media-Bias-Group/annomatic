@@ -28,6 +28,7 @@ class CsvAnnotator(BaseAnnotator):
         labels (List[str]): List of labels that should be used for soft
             parsing.
         out_path (str): Path to the output file.
+        lib_args (dict): Special arguments for model libs (used for creation).
         kwargs: a dict containing additional arguments
     """
 
@@ -43,14 +44,6 @@ class CsvAnnotator(BaseAnnotator):
         lib_args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        """
-        Arguments:
-            model_name (str): Name of the model.
-            model_lib (str): Name of the model library.
-            model_args (dict): Arguments for the model.
-            out_path (str): Path to the output file.
-            kwargs: a dict containing additional arguments
-        """
         super().__init__(
             model_name=model_name,
             model_lib=model_lib,
@@ -66,6 +59,16 @@ class CsvAnnotator(BaseAnnotator):
         self._output_handler: Optional[CsvOutput] = CsvOutput(out_path)
 
     def _validate_data_variable(self) -> bool:
+        """
+        Validates the data variable.
+
+        If a prompt is set, the data variable is valid if it occurs in the
+        prompt. Otherwise, the data variable is valid if it is not None.
+
+
+        Returns:
+            bool: True if the data variable is valid, False otherwise.
+        """
         if self._prompt is None or self.data_variable is None:
             # no validation possible
             return True
@@ -80,6 +83,8 @@ class CsvAnnotator(BaseAnnotator):
     ):
         """
         Sets the input data for the annotator.
+
+
 
         Args:
             data: Union[pd.DataFrame, str] representing the input data.
@@ -109,7 +114,7 @@ class CsvAnnotator(BaseAnnotator):
         data: Union[pd.DataFrame, str] = None,
         return_df: bool = False,
         **kwargs,
-    ):
+    ) -> Optional[pd.DataFrame]:
         """
         Annotates the input data and writes the annotated data to the
         output CSV file. Also performs some setup if needed.
@@ -142,7 +147,12 @@ class CsvAnnotator(BaseAnnotator):
                 **self.lib_args,
             )
 
-        self._annotate(**kwargs)
+        annotated_data = self._annotate(**kwargs)
+
+        if return_df:
+            return annotated_data
+        else:
+            return None
 
     def get_num_samples(self):
         """
