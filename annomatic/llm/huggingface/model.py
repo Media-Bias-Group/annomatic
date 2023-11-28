@@ -137,6 +137,7 @@ class HuggingFaceModel(Model, ABC):
         if self.model is None:
             raise ValueError("Model is not initialized!")
 
+        self.model.eval()  # make outputs deterministic
         model_outputs = self.model.generate(
             **model_inputs,
             **self.generation_args,
