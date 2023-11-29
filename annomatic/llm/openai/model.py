@@ -50,7 +50,11 @@ def _handle_open_ai_exception(exception: Exception):
 
 
 class OpenAiModel(Model):
-    SUPPORTED_MODEL = ["gpt-4", "gpt-3.5-turbo", "gpt-3.5-turbo-instruct"]
+    SUPPORTED_MODEL = [
+        "gpt-4",
+        "gpt-4-1106-preview",
+        "gpt-3.5-turbo",
+    ]
     COMPLETION_ONLY = ["gpt-3.5-turbo-instruct"]
 
     def __init__(
@@ -139,7 +143,7 @@ class OpenAiModel(Model):
             )
 
         return ResponseList.from_responses(
-            [_build_response(message=messages[0], api_response=api_response)],
+            [_build_response(message=messages, api_response=api_response)],
         )
 
     @retry(
@@ -187,9 +191,6 @@ class OpenAiModel(Model):
         Returns:
             The Completion object produced by the OpenAI Model
         """
-        if len(messages) > 1:
-            raise ValueError("Only one message is supported")
-
         try:
             return openai.ChatCompletion.create(
                 model=self.model_name,
