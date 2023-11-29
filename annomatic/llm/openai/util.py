@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from annomatic.llm.base import Response, ResponseList
 
@@ -30,7 +31,7 @@ def _build_response_List(api_response: dict) -> ResponseList:
     return ResponseList(answers=answer, data=data, queries=["TODO"])
 
 
-def _build_response(message: str, api_response: dict) -> Response:
+def _build_response(message: List[str], api_response: dict) -> Response:
     """
     Build the Response format from the OpenAI API.
 

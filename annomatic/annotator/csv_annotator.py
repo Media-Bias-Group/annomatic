@@ -403,6 +403,7 @@ class OpenAiCsvAnnotator(CsvAnnotator):
             model_name=self.model_name,
             api_key=self.api_key,
             generation_args=self.generation_args,
+            system_prompt=self.system_prompt,
         )
         return self._model
 

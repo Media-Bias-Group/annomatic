@@ -12,7 +12,7 @@ class Response:
         _query: the query that was asked
     """
 
-    def __init__(self, answer: str, data: Any, query: str):
+    def __init__(self, answer: str, data: Any, query: Union[str, List[str]]):
         self.answer = answer
         self._data = data
         self._query = query
