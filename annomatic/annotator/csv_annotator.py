@@ -215,13 +215,6 @@ class OpenAiCsvAnnotator(CsvAnnotator):
         self.update_config_generation_args(generation_args)
         self.api_key = api_key
 
-        self.lib_args = {"api_key": api_key}
-
-
-class HFAutoModels(Enum):
-    AutoModelForCausalLM = "AutoModelForCausalLM"
-    AutoModelForSeq2SeqLM = "AutoModelForSeq2SeqLM"
-
 
 class HuggingFaceCsvAnnotator(CsvAnnotator):
     """
