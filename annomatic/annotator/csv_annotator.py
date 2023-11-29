@@ -138,15 +138,6 @@ class CsvAnnotator(BaseAnnotator):
 
         self._validate_labels(**kwargs)
 
-        if self._model is None:
-            self._load_model(
-                model_name=self.model_name,
-                model_lib=self.model_lib,
-                config=self.config,
-                system_prompt=self.system_prompt,
-                **self.lib_args,
-            )
-
         annotated_data = self._annotate(**kwargs)
 
         if return_df:

@@ -23,24 +23,6 @@ class ModelLoadMixin(ABC):
     Mixin for annotator to load a model from different libraries.
     """
 
-    def __init__(self):
-        self._model: Optional[Model] = None
-
-    def _model_predict(self, messages: List[str]) -> ResponseList:
-        """
-        Wrapper of the model predict method.
-
-        Args:
-            messages: List[str] representing the input messages.
-
-        Returns:
-            ResponseList: an object containing the Responses.
-        """
-        if self._model is None:
-            raise ValueError("Model is not initialized!")
-
-        return self._model.predict(messages=messages)
-
     def _load_model(
         self,
         model_name: str,
@@ -65,12 +47,11 @@ class ModelLoadMixin(ABC):
                 )
 
             api_key = kwargs.get("api_key", None)
-            self._model = OpenAiModel(
+            return OpenAiModel(
                 model_name=model_name,
                 api_key=api_key,
                 generation_args=config.to_dict(),
             )
-            return self._model
 
         elif model_lib == "huggingface":
             if not isinstance(config, HuggingFaceConfig):
@@ -87,7 +68,7 @@ class ModelLoadMixin(ABC):
             if auto_model == "AutoModelForCausalLM":
                 from annomatic.llm.huggingface import HFAutoModelForCausalLM
 
-                self._model = HFAutoModelForCausalLM(
+                return HFAutoModelForCausalLM(
                     model_name=model_name,
                     model_args=model_args,
                     tokenizer_args=tokenizer_args,
@@ -95,11 +76,10 @@ class ModelLoadMixin(ABC):
                     system_prompt=system_prompt,
                     use_chat_template=use_chat_template,
                 )
-                return self._model
             elif auto_model == "AutoModelForSeq2SeqLM":
                 from annomatic.llm.huggingface import HFAutoModelForSeq2SeqLM
 
-                self._model = HFAutoModelForSeq2SeqLM(
+                return HFAutoModelForSeq2SeqLM(
                     model_name=model_name,
                     model_args=model_args,
                     tokenizer_args=tokenizer_args,
@@ -107,7 +87,6 @@ class ModelLoadMixin(ABC):
                     system_prompt=system_prompt,
                     use_chat_template=use_chat_template,
                 )
-                return self._model
             else:
                 raise ValueError(
                     "auto_model must be either "
@@ -120,14 +99,12 @@ class ModelLoadMixin(ABC):
                 raise ValueError(
                     "VLLM models require a VllmConfig object.",
                 )
-            _model = VllmModel(
+            return VllmModel(
                 model_name=model_name,
                 model_args=config.model_args,
                 generation_args=config.to_dict(),
                 system_prompt=system_prompt,
             )
-
-            return _model
         else:
             raise ValueError(
                 f"Model library {model_lib} not supported."
@@ -165,6 +142,14 @@ class BaseAnnotator(ModelLoadMixin, ABC):
         self.data_variable: Optional[str] = None
 
         self._prompt: Optional[Prompt] = None
+
+        self._model = self._load_model(
+            model_name=self.model_name,
+            model_lib=self.model_lib,
+            config=self.config,
+            system_prompt=self.system_prompt,
+            **self.lib_args,
+        )
 
     @abstractmethod
     def annotate(
@@ -239,6 +224,21 @@ class BaseAnnotator(ModelLoadMixin, ABC):
             True if the input variable occurs in the prompt, False otherwise.
         """
         raise NotImplementedError()
+
+    def _model_predict(self, messages: List[str]) -> ResponseList:
+        """
+        Wrapper of the model predict method.
+
+        Args:
+            messages: List[str] representing the input messages.
+
+        Returns:
+            ResponseList: an object containing the Responses.
+        """
+        if self._model is None:
+            raise ValueError("Model is not initialized!")
+
+        return self._model.predict(messages=messages)
 
     def set_prompt(self, prompt: Union[Prompt, str]):
         if self._prompt is not None:

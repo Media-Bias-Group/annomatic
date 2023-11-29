@@ -42,6 +42,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
             batch_size=batch_size,
             **kwargs,
         )
+        self._model = FakeVllmModel("test_model")
 
     def _model_predict(self, batch, **kwargs):
         """
@@ -96,6 +97,8 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
             **kwargs,
         )
 
+        self._model = FakeHFAutoModelForCausalLM()
+
     def _model_predict(self, batch, **kwargs):
         """
         Mocking the models batch prediction
@@ -143,8 +146,9 @@ class FakeVllmCsvAnnotator(VllmCsvAnnotator):
             batch_size=batch_size,
             config=config,
         )
+        self._model = FakeVllmModel("test_model")
 
-    def _load_model(self):
+    def _load_model(self, **kwargs):
         """
         Mocking the model loading
         """
