@@ -58,23 +58,6 @@ class CsvAnnotator(BaseAnnotator):
         self.out_path = out_path
         self._output_handler: Optional[CsvOutput] = CsvOutput(out_path)
 
-    def _validate_data_variable(self) -> bool:
-        """
-        Validates the data variable.
-
-        If a prompt is set, the data variable is valid if it occurs in the
-        prompt. Otherwise, the data variable is valid if it is not None.
-
-
-        Returns:
-            bool: True if the data variable is valid, False otherwise.
-        """
-        if self._prompt is None or self.data_variable is None:
-            # no validation possible
-            return True
-
-        return self.data_variable in self._prompt.get_variables()
-
     def set_data(
         self,
         data: Union[pd.DataFrame, str],

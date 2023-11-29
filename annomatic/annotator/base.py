@@ -215,15 +215,22 @@ class BaseAnnotator(ModelLoadMixin, ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def _validate_data_variable(self) -> bool:
         """
-        Validates if the input variable occurs in the prompt.
+        Validates the data variable.
+
+        If a prompt is set, the data variable is valid if it occurs in the
+        prompt. Otherwise, the data variable is valid if it is not None.
+
 
         Returns:
-            True if the input variable occurs in the prompt, False otherwise.
+            bool: True if the data variable is valid, False otherwise.
         """
-        raise NotImplementedError()
+        if self._prompt is None or self.data_variable is None:
+            # no validation possible
+            return True
+
+        return self.data_variable in self._prompt.get_variables()
 
     def _model_predict(self, messages: List[str]) -> ResponseList:
         """
