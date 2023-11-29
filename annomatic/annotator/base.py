@@ -190,19 +190,23 @@ class BaseAnnotator(ModelLoadMixin, ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def fill_prompt(self, batch: pd.DataFrame, **kwargs) -> List[str]:
         """
-        Fills the prompt template with the given kwargs.
+        Creates the prompt passed to the model.
 
         Args:
             batch: pd.DataFrame representing the input data.
-            kwargs: a dict containing the input variables for prompt templates
-
-        Returns:
-            The filled prompt as a str.
+            kwargs: a dict containing the input variables for templates(
         """
-        raise NotImplementedError()
+        if self._prompt is None:
+            raise ValueError("Prompt is not set!")
+
+        messages = []
+        for index, row in batch.iterrows():
+            kwargs[str(self.data_variable)] = row[str(self.data_variable)]
+            messages.append(self._prompt(**kwargs))
+
+        return messages
 
     @abstractmethod
     def store_annotated_data(self, output_data: pd.DataFrame):
