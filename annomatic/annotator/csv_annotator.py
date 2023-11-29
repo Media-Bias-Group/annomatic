@@ -146,24 +146,6 @@ class CsvAnnotator(BaseAnnotator):
 
         self._output_handler.write(output_data)
 
-    def fill_prompt(self, batch: pd.DataFrame, **kwargs) -> List[str]:
-        """
-        Creates the prompt passed to the model.
-
-        Args:
-            batch: pd.DataFrame representing the input data.
-            kwargs: a dict containing the input variables for templates(
-        """
-        if self._prompt is None:
-            raise ValueError("Prompt is not set!")
-
-        messages = []
-        for index, row in batch.iterrows():
-            kwargs[str(self.data_variable)] = row[str(self.data_variable)]
-            messages.append(self._prompt(**kwargs))
-
-        return messages
-
 
 class OpenAiCsvAnnotator(CsvAnnotator):
     """
