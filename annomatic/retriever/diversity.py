@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
+import pandas as pd
 from sklearn.cluster import KMeans
 
 from .base import Retriever
@@ -24,26 +25,36 @@ class DiversityRetriever(Retriever):
     def __init__(
         self,
         k: int,
+        pool: pd.DataFrame,
+        text_variable: str = "text",
+        label_variable: str = "label",
         model_name: str = "BAAI/llm-embedder",
         seed: int = 42,
+        **kwargs,
     ):
-        super().__init__(k=k, model_name=model_name, seed=seed)
+        super().__init__(
+            k=k,
+            pool=pool,
+            text_variable=text_variable,
+            label_variable=label_variable,
+            model_name=model_name,
+            seed=seed,
+            **kwargs,
+        )
+        self.cluster = self._compute_cluster()
+        # list of indices retrieved from the pool
+        self.examples_indices: Optional[list] = None
 
-    def _compute_cluster(self, pool: list) -> np.ndarray:
+    def _compute_cluster(self) -> np.ndarray:
         """
         Computes the clusters for the given pool of messages.
 
         Computes the clusters for the given pool of messages using the
         KMeans algorithm.
 
-        Args:
-            pool: List of messages to compute the clusters for.
-
         Returns:
             The cluster labels for the given pool of messages.
         """
-        self._compute_embeddings(pool)
-
         kmeans = KMeans(
             n_clusters=self.k,
             init="k-means++",
@@ -54,27 +65,30 @@ class DiversityRetriever(Retriever):
 
         return kmeans.labels_
 
-    def select(self, pool, query: Optional[str] = None) -> list:
+    def select(self, query: Optional[str] = None) -> pd.DataFrame:
         """
         Selects diverse response from the given pool of messages.
 
         Args:
-            pool: List of messages to select the best response from.
             query: Not used in this retriever.
+
+        Returns:
+            The k most diverse responses from the given pool of messages.
         """
-        if query is not None:
-            raise ValueError("Query must be None")
 
-        clusters = self._compute_cluster(pool)
-        selected = []
+        if self.examples_indices:
+            return self.pool.iloc[self.examples_indices]
 
-        for cluster_id in np.unique(clusters):
-            cluster_indices = np.where(clusters == cluster_id)[0]
+        selected_indices: List[int] = []
+        for cluster_id in np.unique(self.cluster):
+            cluster_indices = np.where(self.cluster == cluster_id)[0]
             # shuffle the indices with given seed
             np.random.seed(self.seed)
             np.random.shuffle(cluster_indices)
 
-            selected_indices = cluster_indices[: min(len(cluster_indices), 1)]
-            selected.extend([pool[i] for i in selected_indices])
+            selected_indices.extend(
+                cluster_indices[: min(len(cluster_indices), 1)],
+            )
 
-        return selected
+        self.examples_indices = selected_indices
+        return self.pool.iloc[selected_indices]

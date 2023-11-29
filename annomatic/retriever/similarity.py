@@ -1,6 +1,7 @@
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 from sentence_transformers import util
 
 from .base import Retriever
@@ -24,26 +25,35 @@ class SimilarityRetriever(Retriever):
     def __init__(
         self,
         k: int,
+        pool: pd.DataFrame,
+        text_variable: str = "text",
+        label_variable: str = "label",
         model_name: str = "BAAI/llm-embedder",
         seed: int = 42,
+        **kwargs,
     ):
-        super().__init__(k=k, model_name=model_name, seed=seed)
+        super().__init__(
+            k=k,
+            pool=pool,
+            text_variable=text_variable,
+            label_variable=label_variable,
+            model_name=model_name,
+            seed=seed,
+            **kwargs,
+        )
 
-    def select(self, pool, query: Optional[str] = None) -> list:
+    def select(self, query: Optional[str] = None) -> pd.DataFrame:
         """
         Selects the most similar responses from the given pool of messages.
 
         Args:
-            pool: List of messages to select the best response from.
-            query: Query to select the best response for.
+            query: The query sentence to select the most similar responses for.
 
         Returns:
             The k most similar responses from the given pool of messages.
         """
         if query is None:
             raise ValueError("Query must not be None")
-
-        self._compute_embeddings(pool)
 
         if self.embeddings is None:
             raise ValueError("Embeddings must not be None")
@@ -63,4 +73,4 @@ class SimilarityRetriever(Retriever):
         # Get k-nearest neighbors in descending order
         k_nearest_neighbors = cos_similarities.topk(self.k).indices[0]
 
-        return [pool[i] for i in k_nearest_neighbors.tolist()]
+        return self.pool.iloc[k_nearest_neighbors.tolist()]
