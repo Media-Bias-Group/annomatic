@@ -62,6 +62,7 @@ class SimilarityRetriever(Retriever):
         query_embedding = self.model.encode(
             query,
             convert_to_tensor=True,
+            show_progress_bar=False,
         )
 
         # Compute cosine similarities between the query and pool embeddings

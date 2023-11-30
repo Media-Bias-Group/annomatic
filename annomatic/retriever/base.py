@@ -35,7 +35,9 @@ class Retriever(ABC):
         self.model = SentenceTransformer(model_name)
         self.seed = seed
 
-        self.embeddings = self._compute_embeddings(self.pool["text"])
+        self.embeddings = self._compute_embeddings(
+            self.pool[text_variable].tolist(),
+        )
 
     def _compute_embeddings(self, pool: list):
         """

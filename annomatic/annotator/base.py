@@ -14,6 +14,7 @@ from annomatic.config.base import (
 )
 from annomatic.llm.base import Model, ResponseList
 from annomatic.prompt import Prompt
+from annomatic.retriever.base import Retriever
 
 LOGGER = logging.getLogger(__name__)
 
@@ -119,15 +120,22 @@ class FewShotMixin(ABC):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.examples: Optional[pd.DataFrame] = None
+        self.context: Optional[pd.DataFrame] = None
         self.icl_prompt: Optional[Prompt] = None
 
-    def set_examples(self, examples: pd.DataFrame):
-        self.examples = examples
+    def set_context(self, context: Union[Retriever, pd.DataFrame]) -> None:
+        """
+        Sets the context for the ICL prompt. The context can be either a
+        Retriever or a pd.DataFrame.
+
+        Args:
+            context: the context for the ICL prompt
+        """
+        self.context = context
 
     def create_context_part(
         self,
-        label_var: Optional[str],
+        query: Optional[str],
         **kwargs,
     ) -> str:
         """
@@ -135,14 +143,12 @@ class FewShotMixin(ABC):
         prompt at the end.
 
         Args:
-            label_var: the variable name of the label
+            query: the sentence to get the icl context for
             kwargs: a dict containing the input variables for templates
 
         Returns:
             str: the ICL prompt part.
         """
-        if self.examples is None or label_var is None:
-            raise ValueError("Examples are not set!")
 
         # if no special icl prompt set use regular prompt
         if self.icl_prompt is None:
@@ -151,11 +157,23 @@ class FewShotMixin(ABC):
             else:
                 raise ValueError("Prompt is not set!")
 
+        label_var = self.icl_prompt.get_label_variable()
+        if label_var is None:
+            raise ValueError("Label variable not found in the ICL prompt.")
+
+        if self.context is None or label_var is None:
+            raise ValueError("Examples are not set!")
+
         pred_label = None
         message = ""
 
-        for idx, example in self.examples.iterrows():
-            row_dict: Dict[str, Any] = example.to_dict()
+        if isinstance(self.context, Retriever):
+            context = self.context.select(query=query)
+        else:
+            context = self.context
+
+        for idx, row in context.iterrows():
+            row_dict: Dict[str, Any] = row.to_dict()
 
             if label_var in row_dict:
                 pred_label = row_dict[label_var]
@@ -164,8 +182,7 @@ class FewShotMixin(ABC):
             prompt = self.icl_prompt(**row_dict)
 
             if pred_label is not None:
-                prompt = prompt + str(pred_label) + "\n\n"
-
+                prompt += f"{pred_label}\n\n"
             message += prompt
 
         return message
@@ -199,7 +216,6 @@ class BaseAnnotator(FewShotMixin, ModelLoadMixin, ABC):
 
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
-        self.examples: Optional[pd.DataFrame] = None
 
         self._prompt: Optional[Prompt] = None
 
@@ -275,9 +291,9 @@ class BaseAnnotator(FewShotMixin, ModelLoadMixin, ABC):
 
         messages: List[str] = []
         for index, row in batch.iterrows():
-            if self.examples is not None:
+            if self.context is not None:
                 icl_part = self.create_context_part(
-                    label_var=label_var,
+                    query=row[str(self.data_variable)],
                     **kwargs,
                 )
             else:
@@ -349,9 +365,6 @@ class BaseAnnotator(FewShotMixin, ModelLoadMixin, ABC):
             raise ValueError(
                 "Invalid input type! " "Only Prompt or str is supported.",
             )
-
-    def set_examples(self, examples: pd.DataFrame):
-        self.examples = examples
 
     def _validate_labels(self, **kwargs):
         if self._labels is None:
