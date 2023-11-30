@@ -130,10 +130,14 @@ class LabelTemplateSegment(PromptSegment):
             elif isinstance(labels, str):
                 return self._template.parse(**kwargs)
             else:
-                raise ValueError(
-                    f"Invalid value for labels variable: "
-                    f"{self._label_variable}",
-                )
+                try:
+                    return self._template.parse(**kwargs)
+                except Exception as e:
+                    raise ValueError(
+                        f"Invalid value for labels variable: "
+                        f"{self._label_variable}",
+                        e,
+                    )
         else:
             return self._template.parse(**kwargs)
 
