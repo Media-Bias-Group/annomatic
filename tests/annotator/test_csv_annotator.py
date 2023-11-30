@@ -42,6 +42,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
             batch_size=batch_size,
             **kwargs,
         )
+        self._model = FakeVllmModel("test_model")
 
     def _model_predict(self, batch, **kwargs):
         """
@@ -59,7 +60,7 @@ class FakeOpenAiCSVAnnotator(CsvAnnotator):
             * len(batch),
         )
 
-    def _load_model(self):
+    def _load_model(self, **kwargs):
         """
         Mocking the model loading
         """
@@ -96,6 +97,8 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
             **kwargs,
         )
 
+        self._model = FakeHFAutoModelForCausalLM()
+
     def _model_predict(self, batch, **kwargs):
         """
         Mocking the models batch prediction
@@ -111,7 +114,7 @@ class FakeHuggingFaceCsvAnnotator(CsvAnnotator):
             * len(batch),
         )
 
-    def _load_model(self):
+    def _load_model(self, **kwargs):
         """
         Mocking the model loading
         """
@@ -143,8 +146,9 @@ class FakeVllmCsvAnnotator(VllmCsvAnnotator):
             batch_size=batch_size,
             config=config,
         )
+        self._model = FakeVllmModel("test_model")
 
-    def _load_model(self):
+    def _load_model(self, **kwargs):
         """
         Mocking the model loading
         """
@@ -153,16 +157,16 @@ class FakeVllmCsvAnnotator(VllmCsvAnnotator):
 
 def test_set_data_csv():
     annotator = FakeOpenAiCSVAnnotator(model_name="model")
-    annotator.set_data(data="tests/data/input.csv", in_col="input")
-    assert isinstance(annotator._input, pd.DataFrame)
+    annotator.set_data(data="tests/data/input.csv", data_variable="input")
+    assert isinstance(annotator.data, pd.DataFrame)
 
 
 def test_set_data_df():
     annotator = FakeOpenAiCSVAnnotator(model_name="model")
     df = pd.read_csv("tests/data/input.csv")
-    annotator.set_data(data=df, in_col="input")
+    annotator.set_data(data=df, data_variable="input")
 
-    assert isinstance(annotator._input, pd.DataFrame)
+    assert isinstance(annotator.data, pd.DataFrame)
 
 
 def test_set_data_prompt_matching():
@@ -182,10 +186,10 @@ def test_set_data_prompt_matching():
     )
     annotator.set_data(
         data=df,
-        in_col="input",
+        data_variable="input",
     )
 
-    assert annotator.in_col == "input"
+    assert annotator.data_variable == "input"
 
 
 def test_set_data_prompt_raise_value_error():
@@ -206,7 +210,7 @@ def test_set_data_prompt_raise_value_error():
     with pytest.raises(ValueError) as e_info:
         annotator.set_data(
             data=df,
-            in_col="?",
+            data_variable="?",
         )
         raise e_info
 
@@ -271,7 +275,7 @@ def test_OpenAIAnnotation_annotate():
     annotator.set_prompt(prompt=prompt)
     annotator.set_data(
         data=data,
-        in_col="input",
+        data_variable="input",
     )
 
     annotator.annotate()
@@ -316,7 +320,7 @@ def test_Huggingface_annotate():
     annotator.set_prompt(prompt=template)
     annotator.set_data(
         data=data,
-        in_col="input",
+        data_variable="input",
     )
 
     annotator.annotate()
@@ -396,7 +400,7 @@ def test_huggingface_annotate_batch():
     )
     annotator.set_prompt(prompt=template)
     annotator._load_model()
-    annotator.in_col = "input"
+    annotator.data_variable = "input"
     res = annotator._annotate_batch(inp)
 
     assert len(res) == inp.shape[0]
@@ -429,7 +433,7 @@ def test_openai_annotate_batch():
     )
     annotator.set_prompt(prompt=template)
     annotator._load_model()
-    annotator.in_col = "input"
+    annotator.data_variable = "input"
     res = annotator._annotate_batch(inp)
 
     assert len(res) == inp.shape[0]
@@ -462,7 +466,7 @@ def test_vllm_annotate_batch():
     )
     annotator.set_prompt(prompt=template)
     annotator._load_model()
-    annotator.in_col = "input"
+    annotator.data_variable = "input"
     res = annotator._annotate_batch(inp)
 
     assert len(res) == inp.shape[0]
