@@ -1,3 +1,5 @@
+import pandas as pd
+
 from annomatic.retriever import DiversityRetriever, SimilarityRetriever
 
 
@@ -8,10 +10,12 @@ def test_similarity_retriever_identity():
         "I like to eat oranges",
     ]
 
-    retriever = SimilarityRetriever(k=1, seed=42)
-    result = retriever.select(test_sentences, query="I like to eat apples")
+    df = pd.DataFrame({"text": test_sentences, "label": [1, 2, 3]})
 
-    assert result[0] == "I like to eat apples"
+    retriever = SimilarityRetriever(k=1, seed=42, pool=df)
+    result = retriever.select(query="I like to eat apples")
+
+    assert result.iloc[0]["text"] == "I like to eat apples"
 
 
 def test_similarity_retriever():
@@ -20,12 +24,14 @@ def test_similarity_retriever():
         "This sentence is very different from the others",
         "I like to eat apples",
     ]
+    # Create a DataFrame with 'text' column
+    df = pd.DataFrame({"text": test_sentences, "label": [1, 2, 3]})
 
-    retriever = SimilarityRetriever(k=2, seed=42)
-    result = retriever.select(test_sentences, query="I like to eat banana")
+    retriever = SimilarityRetriever(k=2, seed=42, pool=df)
+    result = retriever.select(query="I like to eat banana")
 
-    assert result[0] == "I like to eat bananas"
-    assert result[1] == "I like to eat apples"
+    assert result.iloc[0]["text"] == "I like to eat bananas"
+    assert result.iloc[1]["text"] == "I like to eat apples"
 
 
 def test_diversity_retriever():
@@ -34,9 +40,21 @@ def test_diversity_retriever():
         "This sentence is very different from the others",
         "I like to eat apples",
     ]
+    # Create a DataFrame with 'text' column
+    df = pd.DataFrame({"text": test_sentences, "label": [1, 2, 3]})
 
-    retriever = DiversityRetriever(k=2, seed=42)
-    result = retriever.select(test_sentences)
+    retriever = DiversityRetriever(k=2, pool=df, seed=42)
+    result = retriever.select()
 
-    assert result[0] == "This sentence is very different from the others"
-    assert result[1] == "I like to eat apples"
+    assert (
+        result.iloc[0]["text"]
+        == "This sentence is very different from the others"
+    )
+    assert result.iloc[1]["text"] == "I like to eat apples"
+
+    result = retriever.select()
+    assert (
+        result.iloc[0]["text"]
+        == "This sentence is very different from the others"
+    )
+    assert result.iloc[1]["text"] == "I like to eat apples"
