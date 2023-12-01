@@ -38,17 +38,6 @@ def valid_model(model_name: str) -> str:
     return model_name
 
 
-def _handle_open_ai_exception(exception: Exception):
-    if isinstance(exception, openai.error.APIError):
-        LOGGER.warning(f"APIError: {exception}")
-        pass
-    elif isinstance(exception, openai.error.RateLimitError):
-        LOGGER.warning(f"Rate Limit Error: {exception}")
-        pass
-    else:
-        raise exception
-
-
 class OpenAiModel(Model):
     SUPPORTED_MODEL = [
         "gpt-4",
@@ -135,7 +124,7 @@ class OpenAiModel(Model):
             raise ValueError("Batch messages are not supported!")
 
         if self.model_name in self.COMPLETION_ONLY:
-            api_response = self._call_completion_api(prompt=messages)
+            api_response = self._call_completion_api(prompt=messages[0])
         else:
             messages = self.build_chat_messages(messages)
             api_response = self._call_chat_completions_api(
@@ -146,11 +135,6 @@ class OpenAiModel(Model):
             [_build_response(message=messages, api_response=api_response)],
         )
 
-    @retry(
-        wait=wait_random_exponential(min=1, max=60),
-        stop=stop_after_attempt(6),
-        retry=retry_if_exception_type(openai.error.RateLimitError),
-    )
     def _call_completion_api(self, prompt: str):
         """
         Makes the function call to the Completion API like specified in
@@ -166,19 +150,22 @@ class OpenAiModel(Model):
             The Completion object produced by the OpenAI Model
         """
         try:
-            return openai.Completion.create(
-                model=self.model_name,
-                prompt=prompt,
-                **self.generation_args,
-            )
+            return self._completion_api(prompt=prompt)
         except Exception as exception:
-            _handle_open_ai_exception(exception)
+            raise exception
 
     @retry(
         wait=wait_random_exponential(min=1, max=60),
         stop=stop_after_attempt(6),
-        retry=retry_if_exception_type(openai.error.RateLimitError),
     )
+    def _completion_api(self, prompt: str):
+        return openai.Completion.create(
+            model=self.model_name,
+            prompt=prompt,
+            **self.generation_args,
+            request_timeout=10,
+        )
+
     def _call_chat_completions_api(self, messages: List[str]):
         """
         Makes the function call to the Chat Completion API like specified in
@@ -192,13 +179,21 @@ class OpenAiModel(Model):
             The Completion object produced by the OpenAI Model
         """
         try:
-            return openai.ChatCompletion.create(
-                model=self.model_name,
-                messages=messages,
-                **self.generation_args,
-            )
+            return self._chat_completion_api(messages=messages)
         except Exception as exception:
-            _handle_open_ai_exception(exception)
+            raise exception
+
+    @retry(
+        wait=wait_random_exponential(min=1, max=60),
+        stop=stop_after_attempt(6),
+    )
+    def _chat_completion_api(self, messages: List[str]):
+        return openai.ChatCompletion.create(
+            model=self.model_name,
+            messages=messages,
+            **self.generation_args,
+            request_timeout=10,
+        )
 
     def build_chat_messages(self, prompts: List[str]):
         """

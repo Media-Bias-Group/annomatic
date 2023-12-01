@@ -51,6 +51,7 @@ class ModelLoadMixin(ABC):
             return OpenAiModel(
                 model_name=model_name,
                 api_key=api_key,
+                system_prompt=system_prompt,
                 generation_args=config.to_dict(),
             )
 
