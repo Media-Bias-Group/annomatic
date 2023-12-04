@@ -61,7 +61,7 @@ class DiversityRetriever(Retriever):
             n_init="auto",
             random_state=self.seed,
         )
-        kmeans.fit(self.embeddings)
+        kmeans.fit(self.embeddings.cpu().numpy())
 
         return kmeans.labels_
 
