@@ -124,15 +124,23 @@ class FewShotMixin(ABC):
         self.context: Optional[pd.DataFrame] = None
         self.icl_prompt: Optional[Prompt] = None
 
-    def set_context(self, context: Union[Retriever, pd.DataFrame]) -> None:
+    def set_context(
+        self,
+        context: Union[Retriever, pd.DataFrame],
+        prompt: Optional[Prompt] = None,
+    ) -> None:
         """
         Sets the context for the ICL prompt. The context can be either a
         Retriever or a pd.DataFrame.
 
         Args:
             context: the context for the ICL prompt
+            icl_prompt: a specific prompt used for the examples. If no
+                additional prompt is set, the regular prompt is used and the
+                examples are added at the end.
         """
         self.context = context
+        self.icl_prompt = prompt
 
     def create_context_part(
         self,

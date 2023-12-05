@@ -125,7 +125,11 @@ class Prompt(BasePrompt):
         else:
             self._segments.append(PromptPlainSegment(content=content))
 
-    def add_labels_part(self, content, label_var="label"):
+    def add_labels_part(
+        self,
+        content: str,
+        label_var: Optional[str] = None,
+    ):
         """
         Adds the given new content as a new part of the Prompt.
 
@@ -135,7 +139,18 @@ class Prompt(BasePrompt):
             string containing the prompt
         """
 
-        if label_var not in _template_variables(
+        if label_var is None:
+            vars = _template_variables(
+                content,
+                self._template_format,
+            )
+            if len(vars) == 1:
+                label_var = vars[0]
+            else:
+                raise ValueError(
+                    "Label variable not specified and could not be inferred",
+                )
+        elif label_var not in _template_variables(
             content,
             self._template_format,
         ):
