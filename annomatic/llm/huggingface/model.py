@@ -112,8 +112,11 @@ class HuggingFaceModel(Model, ABC):
         if self.model is not None and self.model.device.type == "cuda":
             model_inputs = model_inputs.to("cuda")
 
-        if self.generation_args.get("max_length", 20) == 20:
-            self.generation_args["max_length"] = input_length * 2
+        if (
+            "max_length" not in self.generation_args
+            and "max_new_tokens" not in self.generation_args
+        ):
+            self.generation_args["max_new_tokens"] = input_length
 
         decoded_output = self._call_llm_and_decode(
             model_inputs,
