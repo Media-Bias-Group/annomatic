@@ -192,6 +192,9 @@ class FewShotMixin(ABC):
 
             if pred_label is not None:
                 prompt += f"{pred_label}\n\n"
+            else:
+                prompt += "\n\n"
+
             message += prompt
 
         return message
