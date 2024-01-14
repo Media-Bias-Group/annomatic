@@ -226,7 +226,6 @@ class HuggingFaceTests(unittest.TestCase):
             "Output: "
         )
         annotator.set_prompt(prompt=template)
-        annotator._load_model()
         annotator.data_variable = "input"
         res = annotator._annotate_batch(inp)
 
@@ -291,7 +290,6 @@ class VllmCsvAnnotatorTests(unittest.TestCase):
             "Output: "
         )
         annotator.set_prompt(prompt=template)
-        annotator._load_model()
         annotator.annotate(data=data, in_col="input")
         assert os.path.exists(
             "./tests/data/output.csv",
@@ -327,7 +325,6 @@ class VllmCsvAnnotatorTests(unittest.TestCase):
             "Output: "
         )
         annotator.set_prompt(prompt=template)
-        annotator._load_model()
         annotator.data_variable = "input"
         res = annotator._annotate_batch(inp)
 
