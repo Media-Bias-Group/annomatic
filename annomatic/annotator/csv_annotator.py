@@ -11,7 +11,7 @@ from annomatic.config.base import (
     OpenAiConfig,
     VllmConfig,
 )
-from annomatic.io import CsvInput, CsvOutput
+from annomatic.io.file import CsvInput, CsvOutput
 
 LOGGER = logging.getLogger(__name__)
 
