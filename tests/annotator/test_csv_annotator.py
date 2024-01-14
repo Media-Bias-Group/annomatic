@@ -4,7 +4,8 @@ import pandas as pd
 import pytest
 from cfgv import Optional
 
-from annomatic.annotator.csv_annotator import CsvAnnotator, VllmCsvAnnotator
+from annomatic.annotator.file import VllmCsvAnnotator
+from annomatic.annotator.file.csv import CsvAnnotator
 from annomatic.config.base import ModelConfig
 from annomatic.llm import Response, ResponseList
 from annomatic.prompt.prompt import Prompt

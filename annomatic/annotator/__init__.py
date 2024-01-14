@@ -1,2 +1,12 @@
-from .csv_annotator import HuggingFaceCsvAnnotator, OpenAiCsvAnnotator, \
-    VllmCsvAnnotator
+from .file.csv import (
+    CsvAnnotator,
+    HuggingFaceCsvAnnotator,
+    OpenAiCsvAnnotator,
+    VllmCsvAnnotator,
+)
+from .file.parquet import (
+    HuggingFaceParquetAnnotator,
+    OpenAiParquetAnnotator,
+    ParquetAnnotator,
+    VllmParquetAnnotator,
+)

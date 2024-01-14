@@ -533,3 +533,135 @@ class BaseAnnotator(FewShotMixin, ModelLoadMixin, ABC):
         except Exception as exception:
             LOGGER.error(f"Prediction error: {str(exception)}")
             return []
+
+
+class VllmAnnotator(BaseAnnotator, ABC):
+    """
+    Abstract base class for Vllm annotators.
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        config: Optional[VllmConfig] = None,
+        model_args: Optional[Dict[str, Any]] = None,
+        generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+        batch_size: Optional[int] = None,
+        labels: Optional[List[str]] = None,
+        **kwargs,
+    ):
+        super().__init__(
+            model_name=model_name,
+            model_lib="vllm",
+            config=config or VllmConfig(),
+            system_prompt=system_prompt,
+            lib_args={},
+            batch_size=batch_size,
+            labels=labels,
+            **kwargs,
+        )
+
+        if hasattr(self.config, "model_args"):
+            self.config.model_args = (
+                getattr(
+                    self.config,
+                    "model_args",
+                    {},
+                )
+                or {}
+            )
+            self.config.model_args.update(model_args or {})
+
+        self.update_config_generation_args(generation_args)
+
+
+class HuggingFaceAnnotator(BaseAnnotator, ABC):
+    """
+    Abstract base class for HuggingFace annotators.
+    """
+
+    DEFAULT_BATCH_SIZE = 5
+
+    def __init__(
+        self,
+        model_name: str,
+        config: Optional[HuggingFaceConfig] = None,
+        model_args: Optional[Dict[str, Any]] = None,
+        tokenizer_args: Optional[Dict[str, Any]] = None,
+        generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+        batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
+        auto_model: str = "AutoModelForCausalLM",
+        use_chat_template: bool = False,
+        labels: Optional[List[str]] = None,
+        **kwargs,
+    ):
+        super().__init__(
+            model_name=model_name,
+            model_lib="huggingface",
+            config=config or HuggingFaceConfig(),
+            system_prompt=system_prompt,
+            lib_args={
+                "auto_model": auto_model,
+                "use_chat_template": use_chat_template,
+            },
+            batch_size=batch_size,
+            labels=labels,
+            **kwargs,
+        )
+
+        if hasattr(self.config, "model_args"):
+            self.config.model_args = getattr(self.config, "model_args", {})
+            self.config.model_args.update(model_args or {})
+
+        if hasattr(self.config, "tokenizer_args"):
+            self.config.tokenizer_args = (
+                getattr(
+                    self.config,
+                    "tokenizer_args",
+                    {},
+                )
+                or {}
+            )
+            self.config.tokenizer_args.update(tokenizer_args or {})
+
+        self.update_config_generation_args(generation_args)
+
+
+class OpenAiAnnotator(BaseAnnotator, ABC):
+    """
+    Abstract base class for OpenAI annotators.
+    """
+
+    DEFAULT_BATCH_SIZE = 1
+
+    def __init__(
+        self,
+        model_name: str,
+        config: Optional[OpenAiConfig] = None,
+        model_args: Optional[Dict[str, Any]] = None,
+        generation_args: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+        batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
+        api_key: str = "",
+        labels: Optional[List[str]] = None,
+        **kwargs,
+    ):
+        super().__init__(
+            model_name=model_name,
+            model_lib="openai",
+            config=config or OpenAiConfig(),
+            system_prompt=system_prompt,
+            lib_args={"api_key": api_key},
+            batch_size=batch_size,
+            labels=labels,
+            **kwargs,
+        )
+
+        if hasattr(self.config, "model_args"):
+            self.config.model_args = getattr(self.config, "model_args", {})
+            self.config.model_args.update(model_args or {})
+
+        self.update_config_generation_args(generation_args)
+        self.api_key = api_key
