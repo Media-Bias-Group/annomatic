@@ -12,7 +12,12 @@ def test_similarity_retriever_identity():
 
     df = pd.DataFrame({"text": test_sentences, "label": [1, 2, 3]})
 
-    retriever = SimilarityRetriever(k=1, seed=42, pool=df)
+    retriever = SimilarityRetriever(
+        model_name="all-MiniLM-L6-v2",
+        k=1,
+        seed=42,
+        pool=df,
+    )
     result = retriever.select(query="I like to eat apples")
 
     assert result.iloc[0]["text"] == "I like to eat apples"
@@ -27,7 +32,12 @@ def test_similarity_retriever():
     # Create a DataFrame with 'text' column
     df = pd.DataFrame({"text": test_sentences, "label": [1, 2, 3]})
 
-    retriever = SimilarityRetriever(k=2, seed=42, pool=df)
+    retriever = SimilarityRetriever(
+        model_name="all-MiniLM-L6-v2",
+        k=2,
+        seed=42,
+        pool=df,
+    )
     result = retriever.select(query="I like to eat banana")
 
     assert result.iloc[0]["text"] == "I like to eat bananas"
@@ -43,7 +53,12 @@ def test_diversity_retriever():
     # Create a DataFrame with 'text' column
     df = pd.DataFrame({"text": test_sentences, "label": [1, 2, 3]})
 
-    retriever = DiversityRetriever(k=2, pool=df, seed=42)
+    retriever = DiversityRetriever(
+        model_name="all-MiniLM-L6-v2",
+        k=2,
+        pool=df,
+        seed=42,
+    )
     result = retriever.select()
 
     assert (
