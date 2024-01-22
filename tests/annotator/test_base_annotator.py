@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from annomatic.annotator import HuggingFaceCsvAnnotator
+from annomatic.annotator import HuggingFaceFileAnnotator
 from annomatic.prompt import Prompt
 from annomatic.retriever import DiversityRetriever
 
@@ -16,11 +16,11 @@ class YourTestClass(unittest.TestCase):
         )
 
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
                 labels=["BIASED", "NOT BIASED"],
@@ -46,11 +46,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_fill_prompt_with_examples(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
                 labels=["BIASED", "NOT BIASED"],
@@ -97,11 +97,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_fill_prompt_with_Retriever(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
                 labels=["BIASED", "NOT BIASED"],
@@ -148,11 +148,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_set_data_csv(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
             )
@@ -164,11 +164,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_set_data_prompt_matching(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
             )
@@ -194,11 +194,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_set_data_prompt_raise_value_error(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
             )
@@ -224,11 +224,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_set_prompt_str(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
             )
@@ -246,11 +246,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_set_prompt_prompt(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
             )
@@ -268,7 +268,7 @@ class YourTestClass(unittest.TestCase):
 
     def test_soft_parse(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
@@ -284,7 +284,7 @@ class YourTestClass(unittest.TestCase):
                 },
             )
 
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
             )
@@ -299,11 +299,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_validate_labels_only_init(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
                 labels=["BIASED", "NON-BIASED"],
@@ -315,11 +315,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_validate_labels_only_prompt(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
             )
@@ -336,11 +336,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_validate_labels_matching(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
                 labels=["BIASED", "NON-BIASED"],
@@ -358,11 +358,11 @@ class YourTestClass(unittest.TestCase):
 
     def test_validate_labels_not_matching(self):
         with patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             return_value=MagicMock(),
         ):
-            annotator = HuggingFaceCsvAnnotator(
+            annotator = HuggingFaceFileAnnotator(
                 model_name="mock",
                 out_path="./tests/data/output.csv",
                 labels=["BIASED", "NON-BIASED"],
