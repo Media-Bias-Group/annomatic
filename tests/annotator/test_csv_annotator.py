@@ -4,16 +4,16 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from annomatic.annotator.csv_annotator import (
-    HuggingFaceCsvAnnotator,
-    OpenAiCsvAnnotator,
-    VllmCsvAnnotator,
+from annomatic.annotator import (
+    HuggingFaceFileAnnotator,
+    OpenAiFileAnnotator,
+    VllmFileAnnotator,
 )
 from annomatic.llm import Response, ResponseList
 from annomatic.prompt.prompt import Prompt
 
 
-class OpenAiCsvAnnotatorTests(unittest.TestCase):
+class OpenAiFileAnnotatorTests(unittest.TestCase):
     def setUp(self):
         self.mock_model = MagicMock()
         self.mock_model_predict = MagicMock(
@@ -23,16 +23,16 @@ class OpenAiCsvAnnotatorTests(unittest.TestCase):
         )
         self.mock_load_model = MagicMock(return_value=self.mock_model)
         self.patcher = patch(
-            "annomatic.annotator.csv_annotator.OpenAiCsvAnnotator",
+            "annomatic.annotator.OpenAiFileAnnotator",
             return_value=self.mock_model,
         )
         self.patcher_predict = patch.object(
-            OpenAiCsvAnnotator,
+            OpenAiFileAnnotator,
             "_model_predict",
             side_effect=self.mock_model_predict,
         )
         self.patcher_load_model = patch.object(
-            OpenAiCsvAnnotator,
+            OpenAiFileAnnotator,
             "_load_model",
             side_effect=self.mock_load_model,
         )
@@ -54,7 +54,7 @@ class OpenAiCsvAnnotatorTests(unittest.TestCase):
         except OSError:
             pass
 
-        annotator = OpenAiCsvAnnotator(
+        annotator = OpenAiFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
         )
@@ -103,7 +103,7 @@ class OpenAiCsvAnnotatorTests(unittest.TestCase):
             "./tests/data/input.csv",
         )
 
-        annotator = OpenAiCsvAnnotator(
+        annotator = OpenAiFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
         )
@@ -134,16 +134,16 @@ class HuggingFaceTests(unittest.TestCase):
         )
         self.mock_load_model = MagicMock(return_value=self.mock_model)
         self.patcher = patch(
-            "annomatic.annotator.csv_annotator.HuggingFaceCsvAnnotator",
+            "annomatic.annotator.HuggingFaceFileAnnotator",
             return_value=self.mock_model,
         )
         self.patcher_predict = patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_model_predict",
             side_effect=self.mock_model_predict,
         )
         self.patcher_load_model = patch.object(
-            HuggingFaceCsvAnnotator,
+            HuggingFaceFileAnnotator,
             "_load_model",
             side_effect=self.mock_load_model,
         )
@@ -169,7 +169,7 @@ class HuggingFaceTests(unittest.TestCase):
             "./tests/data/input.csv",
         )
 
-        annotator = HuggingFaceCsvAnnotator(
+        annotator = HuggingFaceFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NON-BIASED"],
@@ -213,7 +213,7 @@ class HuggingFaceTests(unittest.TestCase):
             "./tests/data/input.csv",
         )
 
-        annotator = HuggingFaceCsvAnnotator(
+        annotator = HuggingFaceFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
         )
@@ -232,7 +232,7 @@ class HuggingFaceTests(unittest.TestCase):
         assert len(res) == inp.shape[0]
 
 
-class VllmCsvAnnotatorTests(unittest.TestCase):
+class VllmFileAnnotatorTests(unittest.TestCase):
     def setUp(self):
         # Create a mock and replace the original implementation
         self.mock_model = MagicMock()
@@ -243,16 +243,16 @@ class VllmCsvAnnotatorTests(unittest.TestCase):
         )
         self.mock_load_model = MagicMock(return_value=self.mock_model)
         self.patcher = patch(
-            "annomatic.annotator.csv_annotator.VllmCsvAnnotator",
+            "annomatic.annotator.VllmFileAnnotator",
             return_value=self.mock_model,
         )
         self.patcher_predict = patch.object(
-            VllmCsvAnnotator,
+            VllmFileAnnotator,
             "_model_predict",
             side_effect=self.mock_model_predict,
         )
         self.patcher_load_model = patch.object(
-            VllmCsvAnnotator,
+            VllmFileAnnotator,
             "_load_model",
             side_effect=self.mock_load_model,
         )
@@ -277,7 +277,7 @@ class VllmCsvAnnotatorTests(unittest.TestCase):
             "./tests/data/input.csv",
         )
 
-        annotator = VllmCsvAnnotator(
+        annotator = VllmFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
         )
@@ -312,7 +312,7 @@ class VllmCsvAnnotatorTests(unittest.TestCase):
             "./tests/data/input.csv",
         )
 
-        annotator = VllmCsvAnnotator(
+        annotator = VllmFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
         )

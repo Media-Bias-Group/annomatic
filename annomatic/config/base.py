@@ -148,8 +148,8 @@ class HuggingFaceConfig(ModelConfig):
         self.no_repeat_ngram_size = no_repeat_ngram_size
         self.bad_words_ids = bad_words_ids
         self.num_return_sequences = num_return_sequences
-        self.model_args = model_args
-        self.tokenizer_args = tokenizer_args
+        self.model_args = model_args or {}
+        self.tokenizer_args = tokenizer_args or {}
 
     @staticmethod
     def get_default_values() -> Dict[str, Any]:
