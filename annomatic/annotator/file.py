@@ -10,7 +10,7 @@ from annomatic.annotator.base import (
     VllmAnnotator,
 )
 from annomatic.config.base import ModelConfig
-from annomatic.io.base import BaseInput, BaseOutput
+from annomatic.io.base import BaseOutput
 
 
 class FileAnnotator(BaseAnnotator):
