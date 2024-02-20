@@ -21,7 +21,13 @@ LOGGER = logging.getLogger(__name__)
 
 class ModelLoadMixin(ABC):
     """
-    Mixin for annotator to load a model from different libraries.
+    Mixin for annotator to load a model.
+
+    Attributes:
+        model_name (str): The name of the model.
+        config (ModelConfig): The configuration of the model.
+        system_prompt (Optional[str]): The system prompt.
+        lib_args (Optional[Dict[str, Any]]): The library arguments.
     """
 
     def __init__(
@@ -66,6 +72,10 @@ class ModelLoadMixin(ABC):
 class FewShotMixin(ABC):
     """
     Mixin for annotator to load a few-shot examples.
+
+    Attributes:
+        context (Optional[pd.DataFrame]): The context for the ICL prompt.
+        icl_prompt (Optional[Prompt]): The ICL prompt.
     """
 
     def __init__(self, **kwargs):
@@ -461,6 +471,13 @@ class BaseAnnotator(FewShotMixin, ABC):
 class VllmAnnotator(ModelLoadMixin, ABC):
     """
     Abstract base class for Vllm annotators.
+
+    Attributes:
+        model_name (str): The name of the model.
+        config (VllmConfig): The configuration of the model.
+        system_prompt (Optional[str]): The system prompt.
+        lib_args (Optional[Dict[str, Any]]): The library arguments.
+
     """
 
     def __init__(
@@ -515,6 +532,12 @@ class VllmAnnotator(ModelLoadMixin, ABC):
 class HuggingFaceAnnotator(ModelLoadMixin, ABC):
     """
     Abstract base class for HuggingFace annotators.
+
+    Attributes:
+        model_name (str): The name of the model.
+        config (HuggingFaceConfig): The configuration of the model.
+        system_prompt (Optional[str]): The system prompt.
+        lib_args (Optional[Dict[str, Any]]): The library arguments.
     """
 
     DEFAULT_BATCH_SIZE = 5
@@ -607,6 +630,12 @@ class HuggingFaceAnnotator(ModelLoadMixin, ABC):
 class OpenAiAnnotator(ModelLoadMixin, ABC):
     """
     Abstract base class for OpenAI annotators.
+
+    Attributes:
+        model_name (str): The name of the model.
+        config (OpenAiConfig): The configuration of the model.
+        system_prompt (Optional[str]): The system prompt.
+        lib_args (Optional[Dict[str, Any]]): The library arguments.
     """
 
     DEFAULT_BATCH_SIZE = 1

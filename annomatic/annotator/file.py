@@ -23,7 +23,6 @@ class FileAnnotator(BaseAnnotator):
     Base annotator class for models that work with file inputs and outputs.
 
     Arguments:
-        model_args (dict): Arguments for the model.
         batch_size (int): Size of the batch.
         labels (List[str]): List of labels that should be used
                             for soft parsing.
@@ -204,6 +203,19 @@ class FileAnnotator(BaseAnnotator):
 class OpenAiFileAnnotator(OpenAiAnnotator, FileAnnotator):
     """
     Annotator class for OpenAI models that use file inputs and outputs.
+
+    Arguments:
+        model_name (str): Name of the model.
+        config (Optional[OpenAiConfig]): Configuration for the model.
+        batch_size (Optional[int]): Size of the batch.
+        labels (Optional[List[str]]): List of labels that should be used
+                                    for soft parsing.
+        system_prompt (Optional[str]): System prompt for the model.
+        out_path (str): Path to the output file.
+        out_format (str): Format of the output file.
+        api_key (str): API key for the OpenAI model.
+        kwargs: a dict containing additional arguments
+
     """
 
     def __init__(
@@ -238,6 +250,19 @@ class HuggingFaceFileAnnotator(HuggingFaceAnnotator, FileAnnotator):
 
     This class can use LLMs loaded by the AutoModelForCausalLM and
     AutoModelForSeq2SeqLM classes.
+
+    Arguments:
+        model_name (str): Name of the model.
+        config (Optional[HuggingFaceConfig]): Configuration for the model.
+        batch_size (Optional[int]): Size of the batch.
+        labels (Optional[List[str]]): List of labels that should be used
+                                        for soft parsing.
+        system_prompt (Optional[str]): System prompt for the model.
+        out_path (str): Path to the output file.
+        out_format (str): Format of the output file.
+        auto_model (str): Name of the AutoModel class to be used.
+        use_chat_template (bool): Whether to use the chat template.
+        kwargs: a dict containing additional arguments
     """
 
     def __init__(
@@ -270,6 +295,18 @@ class HuggingFaceFileAnnotator(HuggingFaceAnnotator, FileAnnotator):
 class VllmFileAnnotator(VllmAnnotator, FileAnnotator):
     """
     Annotator class for Vllm models that use file inputs and outputs.
+
+    Arguments:
+        model_name (str): Name of the model.
+        config (Optional[VllmConfig]): Configuration for the model.
+        batch_size (Optional[int]): Size of the batch.
+        labels (Optional[List[str]]): List of labels that should be used
+                                        for soft parsing.
+        system_prompt (Optional[str]): System prompt for the model.
+        out_path (str): Path to the output file.
+        out_format (str): Format of the output file.
+        kwargs: a dict containing additional arguments
+
     """
 
     def __init__(
