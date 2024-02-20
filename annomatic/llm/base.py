@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
 
 class Response:
@@ -87,11 +87,12 @@ class Model(ABC):
     """
 
     @abstractmethod
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, system_prompt: Optional[str]):
         """
         Initialize the model.
         """
         self.model_name = model_name
+        self.system_prompt = system_prompt
 
     @abstractmethod
     def predict(self, messages: List[str]) -> ResponseList:

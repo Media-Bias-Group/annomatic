@@ -37,12 +37,14 @@ class HuggingFaceModel(Model, ABC):
         system_prompt: Optional[str] = None,
         use_chat_template: bool = False,
     ):
-        super().__init__(model_name=model_name)
+        super().__init__(
+            model_name=model_name,
+            system_prompt=system_prompt,
+        )
 
         self.model_args = model_args or {}
         self.tokenizer_args = tokenizer_args or {}
         self.generation_args = generation_args or {}
-        self.system_prompt = system_prompt
         self.use_chat_template = use_chat_template
 
         self.tokenizer = AutoTokenizer.from_pretrained(
