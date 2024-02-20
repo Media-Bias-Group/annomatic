@@ -663,9 +663,6 @@ class OpenAiAnnotator(ModelLoadMixin, ABC):
             labels=labels,
             **kwargs,
         )
-        self.model_name = model_name
-        self.config = config or OpenAiConfig()
-        self.system_prompt = system_prompt
 
         if hasattr(self.config, "model_args"):
             self.config.model_args = getattr(self.config, "model_args", {})
