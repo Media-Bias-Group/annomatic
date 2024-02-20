@@ -480,6 +480,8 @@ class VllmAnnotator(ModelLoadMixin, ABC):
 
     """
 
+    DEFAULT_BATCH_SIZE = 5
+
     def __init__(
         self,
         model_name: str,
@@ -487,7 +489,7 @@ class VllmAnnotator(ModelLoadMixin, ABC):
         model_args: Optional[Dict[str, Any]] = None,
         generation_args: Optional[Dict[str, Any]] = None,
         system_prompt: Optional[str] = None,
-        batch_size: Optional[int] = None,
+        batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         labels: Optional[List[str]] = None,
         **kwargs,
     ):
