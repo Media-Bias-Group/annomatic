@@ -9,7 +9,12 @@ from annomatic.annotator.base import (
     OpenAiAnnotator,
     VllmAnnotator,
 )
-from annomatic.config.base import ModelConfig
+from annomatic.config.base import (
+    HuggingFaceConfig,
+    ModelConfig,
+    OpenAiConfig,
+    VllmConfig,
+)
 from annomatic.io.base import BaseOutput
 
 
@@ -18,8 +23,6 @@ class FileAnnotator(BaseAnnotator):
     Base annotator class for models that work with file inputs and outputs.
 
     Arguments:
-        model_name (str): Name of the model.
-        model_lib (str): Name of the model library.
         model_args (dict): Arguments for the model.
         batch_size (int): Size of the batch.
         labels (List[str]): List of labels that should be used
@@ -27,31 +30,20 @@ class FileAnnotator(BaseAnnotator):
         out_path (str): Path to the output file.
         out_format (str): Format of the output file. Supported formats are
             'csv' and 'parquet'. Defaults to 'csv'.
-        lib_args (dict): Special arguments for model libs (used for creation).
         kwargs: a dict containing additional arguments
     """
 
     def __init__(
         self,
-        model_name: str,
-        model_lib: str,
-        config: ModelConfig,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
-        system_prompt: Optional[str] = None,
         out_path: str = "",
         out_format: str = "csv",
-        lib_args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         super().__init__(
-            model_name=model_name,
-            model_lib=model_lib,
-            config=config,
             batch_size=batch_size,
             labels=labels,
-            system_prompt=system_prompt,
-            lib_args=lib_args or {},
             **kwargs,
         )
 
@@ -214,7 +206,29 @@ class OpenAiFileAnnotator(OpenAiAnnotator, FileAnnotator):
     Annotator class for OpenAI models that use file inputs and outputs.
     """
 
-    pass
+    def __init__(
+        self,
+        model_name: str,
+        config: Optional[OpenAiConfig] = None,
+        batch_size: Optional[int] = None,
+        labels: Optional[List[str]] = None,
+        system_prompt: Optional[str] = None,
+        out_path: str = "",
+        out_format: str = "csv",
+        api_key: str = "",
+        **kwargs,
+    ):
+        super().__init__(
+            model_name=model_name,
+            config=config,
+            batch_size=batch_size,
+            labels=labels,
+            system_prompt=system_prompt,
+            out_path=out_path,
+            out_format=out_format,
+            api_key=api_key,
+            **kwargs,
+        )
 
 
 class HuggingFaceFileAnnotator(HuggingFaceAnnotator, FileAnnotator):
@@ -226,7 +240,31 @@ class HuggingFaceFileAnnotator(HuggingFaceAnnotator, FileAnnotator):
     AutoModelForSeq2SeqLM classes.
     """
 
-    pass
+    def __init__(
+        self,
+        model_name: str,
+        config: Optional[HuggingFaceConfig] = None,
+        batch_size: Optional[int] = None,
+        labels: Optional[List[str]] = None,
+        system_prompt: Optional[str] = None,
+        out_path: str = "",
+        out_format: str = "csv",
+        auto_model: str = "AutoModelForCausalLM",
+        use_chat_template: bool = False,
+        **kwargs,
+    ):
+        super().__init__(
+            model_name=model_name,
+            config=config,
+            batch_size=batch_size,
+            labels=labels,
+            system_prompt=system_prompt,
+            out_path=out_path,
+            out_format=out_format,
+            auto_model=auto_model,
+            use_chat_template=use_chat_template,
+            **kwargs,
+        )
 
 
 class VllmFileAnnotator(VllmAnnotator, FileAnnotator):
@@ -234,4 +272,24 @@ class VllmFileAnnotator(VllmAnnotator, FileAnnotator):
     Annotator class for Vllm models that use file inputs and outputs.
     """
 
-    pass
+    def __init__(
+        self,
+        model_name: str,
+        config: Optional[VllmConfig] = None,
+        batch_size: Optional[int] = None,
+        labels: Optional[List[str]] = None,
+        system_prompt: Optional[str] = None,
+        out_path: str = "",
+        out_format: str = "csv",
+        **kwargs,
+    ):
+        super().__init__(
+            model_name=model_name,
+            config=config,
+            batch_size=batch_size,
+            labels=labels,
+            system_prompt=system_prompt,
+            out_path=out_path,
+            out_format=out_format,
+            **kwargs,
+        )
