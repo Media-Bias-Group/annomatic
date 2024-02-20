@@ -669,7 +669,6 @@ class OpenAiAnnotator(ModelLoadMixin, ABC):
             self.config.model_args.update(model_args or {})
 
         self.update_config_generation_args(generation_args)
-        self.api_key = api_key
 
     def _load_model(self) -> Model:
         from annomatic.llm.openai import OpenAiModel
