@@ -27,14 +27,16 @@ class VllmModel(Model):
         generation_args: Optional[Dict[str, Any]] = None,
         system_prompt: Optional[str] = None,
     ):
-        super().__init__(model_name=model_name)
+        super().__init__(
+            model_name=model_name,
+            system_prompt=system_prompt,
+        )
 
         model_args = model_args or {}
         generation_args = generation_args or {}
 
         self.model = LLM(model_name, **model_args)
         self.samplingParams = SamplingParams(**generation_args)
-        self.system_prompt = system_prompt
 
     def predict(self, messages: List[str]) -> ResponseList:
         """

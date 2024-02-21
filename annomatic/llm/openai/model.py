@@ -64,12 +64,14 @@ class OpenAiModel(Model):
         Raises:
             ValueError: If no API key is provided.
         """
-        super().__init__(model_name=model_name)
+        super().__init__(
+            model_name=model_name,
+            system_prompt=system_prompt,
+        )
         if model_name in self.COMPLETION_ONLY:
             LOGGER.info("Warning. Legacy API used!")
         valid_model(model_name=model_name)
 
-        self.system_prompt = system_prompt
         self.generation_args = generation_args or {}
         if api_key == "":
             raise ValueError("No OPEN AI key given!")

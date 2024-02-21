@@ -21,106 +21,64 @@ LOGGER = logging.getLogger(__name__)
 
 class ModelLoadMixin(ABC):
     """
-    Mixin for annotator to load a model from different libraries.
+    Mixin for annotator to load a model.
+
+    Attributes:
+        model_name (str): The name of the model.
+        config (ModelConfig): The configuration of the model.
+        system_prompt (Optional[str]): The system prompt.
+        lib_args (Optional[Dict[str, Any]]): The library arguments.
     """
 
-    def _load_model(
+    def __init__(
         self,
         model_name: str,
-        model_lib: str,
         config: ModelConfig,
         system_prompt: Optional[str] = None,
+        lib_args: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Model:
+    ):
+        self.model_name = model_name
+        self.config = config
+        self.system_prompt = system_prompt
+        self.lib_args = lib_args or {}
+        self._model: Optional[Model] = None
+        super().__init__(**kwargs)
+
+    @abstractmethod
+    def _load_model(self) -> Model:
         """
         Loads the model and store it in self.model.
 
         Returns:
             The loaded model.
         """
+        raise NotImplementedError()
 
-        if model_lib == "openai":
-            from annomatic.llm.openai import OpenAiModel
-
-            if not isinstance(config, OpenAiConfig):
-                raise ValueError(
-                    "OpenAI models require a OpenAiConfig object.",
-                )
-
-            api_key = kwargs.get("api_key", None)
-            return OpenAiModel(
-                model_name=model_name,
-                api_key=api_key,
-                system_prompt=system_prompt,
-                generation_args=config.to_dict(),
-            )
-
-        elif model_lib == "huggingface":
-            if not isinstance(config, HuggingFaceConfig):
-                raise ValueError(
-                    "Huggingface models require a HuggingfaceConfig object.",
-                )
-
-            model_args = config.model_args
-            tokenizer_args = config.tokenizer_args
-            generation_args = config.to_dict()
-            auto_model = kwargs.get("auto_model", "AutoModelForCausalLM")
-            use_chat_template = kwargs.get("use_chat_template", False)
-
-            if auto_model == "AutoModelForCausalLM":
-                from annomatic.llm.huggingface import HFAutoModelForCausalLM
-
-                return HFAutoModelForCausalLM(
-                    model_name=model_name,
-                    model_args=model_args,
-                    tokenizer_args=tokenizer_args,
-                    generation_args=generation_args,
-                    system_prompt=system_prompt,
-                    use_chat_template=use_chat_template,
-                )
-            elif auto_model == "AutoModelForSeq2SeqLM":
-                from annomatic.llm.huggingface import HFAutoModelForSeq2SeqLM
-
-                return HFAutoModelForSeq2SeqLM(
-                    model_name=model_name,
-                    model_args=model_args,
-                    tokenizer_args=tokenizer_args,
-                    generation_args=generation_args,
-                    system_prompt=system_prompt,
-                    use_chat_template=use_chat_template,
-                )
+    def update_config_generation_args(
+        self,
+        generation_args: Optional[Dict[str, Any]] = None,
+    ):
+        for key, value in (generation_args or {}).items():
+            if (
+                hasattr(self.config, key)
+                and getattr(self.config, key) != value
+            ):
+                setattr(self.config, key, value)
             else:
-                raise ValueError(
-                    "auto_model must be either "
-                    "'AutoModelForCausalLM' or 'AutoModelForSeq2SeqLM')",
-                )
-        elif model_lib == "vllm":
-            from annomatic.llm.vllm import VllmModel
-
-            if not isinstance(config, VllmConfig):
-                raise ValueError(
-                    "VLLM models require a VllmConfig object.",
-                )
-            return VllmModel(
-                model_name=model_name,
-                model_args=config.model_args,
-                generation_args=config.to_dict(),
-                system_prompt=system_prompt,
-            )
-        else:
-            raise ValueError(
-                f"Model library {model_lib} not supported."
-                f" Please choose from 'openai', 'huggingface', or 'vllm'.",
-            )
+                self.config.kwargs[key] = value
 
 
 class FewShotMixin(ABC):
     """
     Mixin for annotator to load a few-shot examples.
+
+    Attributes:
+        context (Optional[pd.DataFrame]): The context for the ICL prompt.
+        icl_prompt (Optional[Prompt]): The ICL prompt.
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         self.context: Optional[pd.DataFrame] = None
         self.icl_prompt: Optional[Prompt] = None
 
@@ -200,44 +158,32 @@ class FewShotMixin(ABC):
         return message
 
 
-class BaseAnnotator(FewShotMixin, ModelLoadMixin, ABC):
+class BaseAnnotator(FewShotMixin, ABC):
     """
     Base class for annotator classes
     """
 
     def __init__(
         self,
-        model_name: str,
-        model_lib: str,
-        config: ModelConfig,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
-        system_prompt: Optional[str] = None,
-        lib_args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__()
-        self.model_name = model_name
-        self.model_lib = model_lib
-        self.config = config
+        super().__init__(**kwargs)
         self.batch_size = batch_size
         self._labels = labels
-        self.system_prompt = system_prompt
-        self.lib_args = lib_args or {}
         self.kwargs = kwargs
-
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
-
+        self._model: Optional[Model] = None
         self._prompt: Optional[Prompt] = None
 
-        self._model = self._load_model(
-            model_name=self.model_name,
-            model_lib=self.model_lib,
-            config=self.config,
-            system_prompt=self.system_prompt,
-            **self.lib_args,
-        )
+        if not isinstance(self, ModelLoadMixin):
+            raise ValueError(
+                "ModelLoadMixin not implemented for this class!",
+            )
+
+        self._model = self._load_model()
 
     @abstractmethod
     def annotate(
@@ -396,19 +342,6 @@ class BaseAnnotator(FewShotMixin, ModelLoadMixin, ABC):
                     "Labels in prompt and Annotator do not match!",
                 )
 
-    def update_config_generation_args(
-        self,
-        generation_args: Optional[Dict[str, Any]] = None,
-    ):
-        for key, value in (generation_args or {}).items():
-            if (
-                hasattr(self.config, key)
-                and getattr(self.config, key) != value
-            ):
-                setattr(self.config, key, value)
-            else:
-                self.config.kwargs[key] = value
-
     def _num_batches(self, total_rows: int):
         """
         Calculates the number of batches.
@@ -546,10 +479,19 @@ class BaseAnnotator(FewShotMixin, ModelLoadMixin, ABC):
             return []
 
 
-class VllmAnnotator(BaseAnnotator, ABC):
+class VllmAnnotator(ModelLoadMixin, ABC):
     """
     Abstract base class for Vllm annotators.
+
+    Attributes:
+        model_name (str): The name of the model.
+        config (VllmConfig): The configuration of the model.
+        system_prompt (Optional[str]): The system prompt.
+        lib_args (Optional[Dict[str, Any]]): The library arguments.
+
     """
+
+    DEFAULT_BATCH_SIZE = 5
 
     def __init__(
         self,
@@ -558,13 +500,12 @@ class VllmAnnotator(BaseAnnotator, ABC):
         model_args: Optional[Dict[str, Any]] = None,
         generation_args: Optional[Dict[str, Any]] = None,
         system_prompt: Optional[str] = None,
-        batch_size: Optional[int] = None,
+        batch_size: Optional[int] = DEFAULT_BATCH_SIZE,
         labels: Optional[List[str]] = None,
         **kwargs,
     ):
         super().__init__(
             model_name=model_name,
-            model_lib="vllm",
             config=config or VllmConfig(),
             system_prompt=system_prompt,
             lib_args={},
@@ -586,10 +527,30 @@ class VllmAnnotator(BaseAnnotator, ABC):
 
         self.update_config_generation_args(generation_args)
 
+    def _load_model(self) -> Model:
+        from annomatic.llm.vllm import VllmModel
 
-class HuggingFaceAnnotator(BaseAnnotator, ABC):
+        if not isinstance(self.config, VllmConfig):
+            raise ValueError(
+                "VLLM models require a VllmConfig object.",
+            )
+        return VllmModel(
+            model_name=self.model_name,
+            model_args=self.config.model_args,
+            generation_args=self.config.to_dict(),
+            system_prompt=self.system_prompt,
+        )
+
+
+class HuggingFaceAnnotator(ModelLoadMixin, ABC):
     """
     Abstract base class for HuggingFace annotators.
+
+    Attributes:
+        model_name (str): The name of the model.
+        config (HuggingFaceConfig): The configuration of the model.
+        system_prompt (Optional[str]): The system prompt.
+        lib_args (Optional[Dict[str, Any]]): The library arguments.
     """
 
     DEFAULT_BATCH_SIZE = 5
@@ -610,7 +571,6 @@ class HuggingFaceAnnotator(BaseAnnotator, ABC):
     ):
         super().__init__(
             model_name=model_name,
-            model_lib="huggingface",
             config=config or HuggingFaceConfig(),
             system_prompt=system_prompt,
             lib_args={
@@ -639,10 +599,56 @@ class HuggingFaceAnnotator(BaseAnnotator, ABC):
 
         self.update_config_generation_args(generation_args)
 
+    def _load_model(self) -> Model:
+        if not isinstance(self.config, HuggingFaceConfig):
+            raise ValueError(
+                "Huggingface models require a HuggingfaceConfig object.",
+            )
 
-class OpenAiAnnotator(BaseAnnotator, ABC):
+        model_args = self.config.model_args
+        tokenizer_args = self.config.tokenizer_args
+        generation_args = self.config.to_dict()
+        auto_model = self.lib_args.get("auto_model", "AutoModelForCausalLM")
+        use_chat_template = self.lib_args.get("use_chat_template", False)
+
+        if auto_model == "AutoModelForCausalLM":
+            from annomatic.llm.huggingface import HFAutoModelForCausalLM
+
+            return HFAutoModelForCausalLM(
+                model_name=self.model_name,
+                model_args=model_args,
+                tokenizer_args=tokenizer_args,
+                generation_args=generation_args,
+                system_prompt=self.system_prompt,
+                use_chat_template=use_chat_template,
+            )
+        elif auto_model == "AutoModelForSeq2SeqLM":
+            from annomatic.llm.huggingface import HFAutoModelForSeq2SeqLM
+
+            return HFAutoModelForSeq2SeqLM(
+                model_name=self.model_name,
+                model_args=model_args,
+                tokenizer_args=tokenizer_args,
+                generation_args=generation_args,
+                system_prompt=self.system_prompt,
+                use_chat_template=use_chat_template,
+            )
+        else:
+            raise ValueError(
+                "auto_model must be either "
+                "'AutoModelForCausalLM' or 'AutoModelForSeq2SeqLM')",
+            )
+
+
+class OpenAiAnnotator(ModelLoadMixin, ABC):
     """
     Abstract base class for OpenAI annotators.
+
+    Attributes:
+        model_name (str): The name of the model.
+        config (OpenAiConfig): The configuration of the model.
+        system_prompt (Optional[str]): The system prompt.
+        lib_args (Optional[Dict[str, Any]]): The library arguments.
     """
 
     DEFAULT_BATCH_SIZE = 1
@@ -661,7 +667,6 @@ class OpenAiAnnotator(BaseAnnotator, ABC):
     ):
         super().__init__(
             model_name=model_name,
-            model_lib="openai",
             config=config or OpenAiConfig(),
             system_prompt=system_prompt,
             lib_args={"api_key": api_key},
@@ -675,4 +680,19 @@ class OpenAiAnnotator(BaseAnnotator, ABC):
             self.config.model_args.update(model_args or {})
 
         self.update_config_generation_args(generation_args)
-        self.api_key = api_key
+
+    def _load_model(self) -> Model:
+        from annomatic.llm.openai import OpenAiModel
+
+        if not isinstance(self.config, OpenAiConfig):
+            raise ValueError(
+                "OpenAI models require a OpenAiConfig object.",
+            )
+
+        api_key = self.lib_args.get("api_key", None)
+        return OpenAiModel(
+            model_name=self.model_name,
+            api_key=api_key,
+            system_prompt=self.system_prompt,
+            generation_args=self.config.to_dict(),
+        )
