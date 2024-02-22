@@ -38,18 +38,26 @@ To get started with Annomatic, follow these installation steps:
 
    The installation depends on what Language Models you choose:
 
-   1. OpenAI
+    1. OpenAI
     ```bash
     poetry install --with openai
     ```
 
-   2. HuggingFace
+    2. HuggingFace
     ```bash
     poetry install --with huggingface
     ```
+   additional to this be sure that you have installed the right version of
+   pytorch.
+
+    2. vLLM
+    ```bash
+    poetry install --with vllm
+    ```
 
 ## Usage
-
+   You can find examples of how to use Annomatic in the [Examples](examples)
+   directory.
 ## Contributing
 
-## Lincense
+## License
