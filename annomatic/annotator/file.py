@@ -1,15 +1,11 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 import pandas as pd
 
 from annomatic.annotator.base import LOGGER, BaseAnnotator
-from annomatic.config.base import (
-    HuggingFaceConfig,
-    ModelConfig,
-    OpenAiConfig,
-    VllmConfig,
-)
+from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 from annomatic.io.base import BaseOutput
+from annomatic.io.file import create_input_handler, create_output_handler
 from annomatic.llm.huggingface.model import HuggingFaceModelLoader
 from annomatic.llm.openai.model import OpenAiModelLoader
 from annomatic.llm.vllm.model import VllmModelLoader
@@ -23,6 +19,7 @@ class FileAnnotator(BaseAnnotator):
         batch_size (int): Size of the batch.
         labels (List[str]): List of labels that should be used
                             for soft parsing.
+        output_handler (BaseOutput): Output handler for the annotated data.
         out_path (str): Path to the output file.
         out_format (str): Format of the output file. Supported formats are
             'csv' and 'parquet'. Defaults to 'csv'.
@@ -33,8 +30,9 @@ class FileAnnotator(BaseAnnotator):
         self,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
-        out_path: str = "",
-        out_format: str = "csv",
+        output_handler: Optional[BaseOutput] = None,
+        out_path: Optional[str] = None,
+        out_format: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(
@@ -43,52 +41,18 @@ class FileAnnotator(BaseAnnotator):
             **kwargs,
         )
 
-        self.out_path = out_path
-        self._output_handler: Optional[BaseOutput] = None
-        # Select output format
-        self._initialize_output_handler(
-            out_path=out_path,
-            out_format=out_format,
-        )
-
-    def _initialize_output_handler(
-        self,
-        out_path: str,
-        out_format: str,
-    ) -> Optional[BaseOutput]:
-        if out_format == "csv":
-            from annomatic.io.file import CsvOutput
-
-            self._output_handler = CsvOutput(
-                out_path,
+        if output_handler:
+            self._output_handler = output_handler
+        elif out_path and out_format:
+            self._output_handler = create_output_handler(
+                path=out_path,
+                type=out_format,
             )
-            return self._output_handler
-
-        elif out_format == "parquet":
-            from annomatic.io.file import ParquetOutput
-
-            self._output_handler = ParquetOutput(
-                out_path,
+        else:
+            raise ValueError(
+                "Must provide either an output_handler "
+                "or both out_path and out_format.",
             )
-            return self._output_handler
-        else:
-            raise ValueError(f"Unsupported output format: {out_format}")
-
-    def _read_input(
-        self,
-        in_path: str,
-        in_format: str,
-    ) -> pd.DataFrame:
-        if in_format == "csv":
-            from annomatic.io.file import CsvInput
-
-            return CsvInput(in_path).read(sep=",")
-        elif in_format == "parquet":
-            from annomatic.io.file import ParquetInput
-
-            return ParquetInput(in_path).read(sep=",")
-        else:
-            raise ValueError(f"Unsupported input format: {in_format}")
 
     def set_data(
         self,
@@ -122,20 +86,10 @@ class FileAnnotator(BaseAnnotator):
         if isinstance(data, pd.DataFrame):
             self.data = data
         elif isinstance(data, str):
-            self.data = self._read_input(
-                in_path=data,
-                in_format=in_format,
-            )
-            if in_format == "csv":
-                from annomatic.io.file import CsvInput
-
-                self.data = CsvInput(data).read(sep=sep)
-            elif in_format == "parquet":
-                from annomatic.io.file import ParquetInput
-
-                self.data = ParquetInput(data).read(sep=sep)
-            else:
-                raise ValueError(f"Unsupported input format: {in_format}")
+            self.data = create_input_handler(
+                path=data,
+                type=in_format,
+            ).read(sep=sep)
         else:
             raise ValueError(
                 "Invalid input type! "
