@@ -2,13 +2,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
-from annomatic.annotator.base import (
-    LOGGER,
-    BaseAnnotator,
-    HuggingFaceAnnotator,
-    OpenAiAnnotator,
-    VllmAnnotator,
-)
+from annomatic.annotator.base import LOGGER, BaseAnnotator
 from annomatic.config.base import (
     HuggingFaceConfig,
     ModelConfig,
@@ -16,6 +10,9 @@ from annomatic.config.base import (
     VllmConfig,
 )
 from annomatic.io.base import BaseOutput
+from annomatic.llm.huggingface.model import HuggingFaceModelLoader
+from annomatic.llm.openai.model import OpenAiModelLoader
+from annomatic.llm.vllm.model import VllmModelLoader
 
 
 class FileAnnotator(BaseAnnotator):
@@ -200,7 +197,7 @@ class FileAnnotator(BaseAnnotator):
         self._output_handler.write(output_data)
 
 
-class OpenAiFileAnnotator(OpenAiAnnotator, FileAnnotator):
+class OpenAiFileAnnotator(OpenAiModelLoader, FileAnnotator):
     """
     Annotator class for OpenAI models that use file inputs and outputs.
 
@@ -243,7 +240,7 @@ class OpenAiFileAnnotator(OpenAiAnnotator, FileAnnotator):
         )
 
 
-class HuggingFaceFileAnnotator(HuggingFaceAnnotator, FileAnnotator):
+class HuggingFaceFileAnnotator(HuggingFaceModelLoader, FileAnnotator):
     """
     Annotator class for HuggingFace models that work with file inputs
     and outputs.
@@ -292,7 +289,7 @@ class HuggingFaceFileAnnotator(HuggingFaceAnnotator, FileAnnotator):
         )
 
 
-class VllmFileAnnotator(VllmAnnotator, FileAnnotator):
+class VllmFileAnnotator(VllmModelLoader, FileAnnotator):
     """
     Annotator class for Vllm models that use file inputs and outputs.
 
