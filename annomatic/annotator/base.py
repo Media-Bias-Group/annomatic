@@ -22,7 +22,6 @@ LOGGER = logging.getLogger(__name__)
 class PostProcessor(ABC):
     """
     Base class for post processors.
-    Post processors are used to process the model output before it is stored.
     """
 
     @abstractmethod
@@ -61,9 +60,25 @@ class DefaultPostProcessor(PostProcessor):
         output_col: str,
         labels: List[str],
     ) -> pd.DataFrame:
-        if labels is None:
-            raise ValueError("Labels are not set!")
+        """
+        Processes the model output before it is stored.
 
+        Finds the label in the model output and stores it in the output column.
+
+        If labels are not known, the model output is stored as is.
+
+        Args:
+                df: the model output to be processed as a DataFrame
+                input_col: the input column
+                output_col: the output column
+                labels: the labels to be used for soft parsing
+
+        Returns:
+            the processed model output to be stored as a DataFrame
+        """
+
+        if labels is None:
+            return df
         df[output_col] = df[input_col].apply(
             lambda x: util.find_label(x, labels),
         )
