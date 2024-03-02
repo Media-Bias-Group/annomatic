@@ -19,56 +19,6 @@ from annomatic.retriever.base import Retriever
 LOGGER = logging.getLogger(__name__)
 
 
-class ModelLoadMixin(ABC):
-    """
-    Mixin for annotator to load a model.
-
-    Attributes:
-        model_name (str): The name of the model.
-        config (ModelConfig): The configuration of the model.
-        system_prompt (Optional[str]): The system prompt.
-        lib_args (Optional[Dict[str, Any]]): The library arguments.
-    """
-
-    def __init__(
-        self,
-        model_name: str,
-        config: ModelConfig,
-        system_prompt: Optional[str] = None,
-        lib_args: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ):
-        self.model_name = model_name
-        self.config = config
-        self.system_prompt = system_prompt
-        self.lib_args = lib_args or {}
-        self._model: Optional[Model] = None
-        super().__init__(**kwargs)
-
-    @abstractmethod
-    def _load_model(self) -> Model:
-        """
-        Loads the model and store it in self.model.
-
-        Returns:
-            The loaded model.
-        """
-        raise NotImplementedError()
-
-    def update_config_generation_args(
-        self,
-        generation_args: Optional[Dict[str, Any]] = None,
-    ):
-        for key, value in (generation_args or {}).items():
-            if (
-                hasattr(self.config, key)
-                and getattr(self.config, key) != value
-            ):
-                setattr(self.config, key, value)
-            else:
-                self.config.kwargs[key] = value
-
-
 class FewShotMixin(ABC):
     """
     Mixin for annotator to load a few-shot examples.
@@ -165,6 +115,7 @@ class BaseAnnotator(FewShotMixin, ABC):
 
     def __init__(
         self,
+        model_loader: ModelLoader,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
         **kwargs,
@@ -177,13 +128,10 @@ class BaseAnnotator(FewShotMixin, ABC):
         self.data_variable: Optional[str] = None
         self._model: Optional[Model] = None
         self._prompt: Optional[Prompt] = None
+        self.model_loader = model_loader
 
-        if not isinstance(self, ModelLoader):
-            raise ValueError(
-                "ModelLoadMixin not implemented for this class!",
-            )
-
-        self._model = self._load_model()
+        # TODO make lazy loading possible
+        self._model = self.model_loader.load_model()
 
     @abstractmethod
     def annotate(

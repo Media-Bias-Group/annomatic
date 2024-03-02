@@ -269,7 +269,7 @@ class OpenAiModelLoader(ModelLoader, ABC):
 
         self.update_config_generation_args(generation_args)
 
-    def _load_model(self) -> Model:
+    def load_model(self) -> Model:
         from annomatic.llm.openai import OpenAiModel
 
         if not isinstance(self.config, OpenAiConfig):

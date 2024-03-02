@@ -15,35 +15,29 @@ from annomatic.prompt.prompt import Prompt
 
 class OpenAiFileAnnotatorTests(unittest.TestCase):
     def setUp(self):
-        self.mock_model = MagicMock()
+        # Mock the model's predict method
         self.mock_model_predict = MagicMock(
             return_value=ResponseList.from_responses(
-                [Response(answer="answer", data="data", query="query")] * 1,
+                [Response(answer="answer", data="data", query="query")],
             ),
         )
-        self.mock_load_model = MagicMock(return_value=self.mock_model)
-        self.patcher = patch(
-            "annomatic.annotator.OpenAiFileAnnotator",
-            return_value=self.mock_model,
+
+        # Mock the model and assign the predict method
+        self.mock_model = MagicMock()
+        self.mock_model.predict = self.mock_model_predict
+
+        self.mock_model_loader = MagicMock()
+        self.mock_model_loader.load_model.return_value = self.mock_model
+
+        # Patch the HuggingFaceModelLoader to return the mocked model loader
+        self.patcher_model_loader = patch(
+            "annomatic.llm.openai.model.OpenAiModelLoader",
+            return_value=self.mock_model_loader,
         )
-        self.patcher_predict = patch.object(
-            OpenAiFileAnnotator,
-            "_model_predict",
-            side_effect=self.mock_model_predict,
-        )
-        self.patcher_load_model = patch.object(
-            OpenAiFileAnnotator,
-            "_load_model",
-            side_effect=self.mock_load_model,
-        )
-        self.patcher.start()
-        self.patcher_predict.start()
-        self.patcher_load_model.start()
+        self.patcher_model_loader.start()
 
     def tearDown(self):
-        self.patcher.stop()
-        self.patcher_predict.stop()
-        self.patcher_load_model.stop()
+        self.patcher_model_loader.stop()
 
     def test_OpenAiAnnotation_annotate(self):
         # delete file if exists
@@ -57,6 +51,7 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
         annotator = OpenAiFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
+            model_loader=self.mock_model_loader,
         )
         annotator.batch_size = 1
         data = pd.read_csv(
@@ -106,6 +101,7 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
         annotator = OpenAiFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
+            model_loader=self.mock_model_loader,
         )
 
         template = (
@@ -125,36 +121,29 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
 
 class HuggingFaceTests(unittest.TestCase):
     def setUp(self):
-        # Create a mock and replace the original implementation
-        self.mock_model = MagicMock()
+        # Mock the model's predict method
         self.mock_model_predict = MagicMock(
             return_value=ResponseList.from_responses(
                 [Response(answer="answer", data="data", query="query")] * 5,
             ),
         )
-        self.mock_load_model = MagicMock(return_value=self.mock_model)
-        self.patcher = patch(
-            "annomatic.annotator.HuggingFaceFileAnnotator",
-            return_value=self.mock_model,
+
+        # Mock the model and assign the predict method
+        self.mock_model = MagicMock()
+        self.mock_model.predict = self.mock_model_predict
+
+        self.mock_model_loader = MagicMock()
+        self.mock_model_loader.load_model.return_value = self.mock_model
+
+        # Patch the HuggingFaceModelLoader to return the mocked model loader
+        self.patcher_model_loader = patch(
+            "annomatic.llm.huggingface.model.HuggingFaceModelLoader",
+            return_value=self.mock_model_loader,
         )
-        self.patcher_predict = patch.object(
-            HuggingFaceFileAnnotator,
-            "_model_predict",
-            side_effect=self.mock_model_predict,
-        )
-        self.patcher_load_model = patch.object(
-            HuggingFaceFileAnnotator,
-            "_load_model",
-            side_effect=self.mock_load_model,
-        )
-        self.patcher.start()
-        self.patcher_predict.start()
-        self.patcher_load_model.start()
+        self.patcher_model_loader.start()
 
     def tearDown(self):
-        self.patcher.stop()
-        self.patcher_predict.stop()
-        self.patcher_load_model.stop()
+        self.patcher_model_loader.stop()
 
     def test_Huggingface_annotate(self):
         # delete file if exists
@@ -173,6 +162,7 @@ class HuggingFaceTests(unittest.TestCase):
             model_name="model",
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NON-BIASED"],
+            model_loader=self.mock_model_loader,
         )
         annotator.batch_size = 5
 
@@ -216,6 +206,7 @@ class HuggingFaceTests(unittest.TestCase):
         annotator = HuggingFaceFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
+            model_loader=self.mock_model_loader,
         )
         template = (
             "Instruction: '{input}'"
@@ -234,36 +225,29 @@ class HuggingFaceTests(unittest.TestCase):
 
 class VllmFileAnnotatorTests(unittest.TestCase):
     def setUp(self):
-        # Create a mock and replace the original implementation
-        self.mock_model = MagicMock()
+        # Mock the model's predict method
         self.mock_model_predict = MagicMock(
             return_value=ResponseList.from_responses(
                 [Response(answer="answer", data="data", query="query")] * 5,
             ),
         )
-        self.mock_load_model = MagicMock(return_value=self.mock_model)
-        self.patcher = patch(
-            "annomatic.annotator.VllmFileAnnotator",
-            return_value=self.mock_model,
+
+        # Mock the model and assign the predict method
+        self.mock_model = MagicMock()
+        self.mock_model.predict = self.mock_model_predict
+
+        self.mock_model_loader = MagicMock()
+        self.mock_model_loader.load_model.return_value = self.mock_model
+
+        # Patch the HuggingFaceModelLoader to return the mocked model loader
+        self.patcher_model_loader = patch(
+            "annomatic.llm.vllm.model.VllmModelLoader",
+            return_value=self.mock_model_loader,
         )
-        self.patcher_predict = patch.object(
-            VllmFileAnnotator,
-            "_model_predict",
-            side_effect=self.mock_model_predict,
-        )
-        self.patcher_load_model = patch.object(
-            VllmFileAnnotator,
-            "_load_model",
-            side_effect=self.mock_load_model,
-        )
-        self.patcher.start()
-        self.patcher_predict.start()
-        self.patcher_load_model.start()
+        self.patcher_model_loader.start()
 
     def tearDown(self):
-        self.patcher.stop()
-        self.patcher_predict.stop()
-        self.patcher_load_model.stop()
+        self.patcher_model_loader.stop()
 
     def test_vllm_annotate(self):
         # delete file if exists
@@ -280,6 +264,7 @@ class VllmFileAnnotatorTests(unittest.TestCase):
         annotator = VllmFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
+            model_loader=self.mock_model_loader,
         )
         template = (
             "Instruction: '{input}'"
@@ -315,6 +300,7 @@ class VllmFileAnnotatorTests(unittest.TestCase):
         annotator = VllmFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
+            model_loader=self.mock_model_loader,
         )
         template = (
             "Instruction: '{input}'"

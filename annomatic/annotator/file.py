@@ -6,6 +6,7 @@ from annomatic.annotator.base import LOGGER, BaseAnnotator
 from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 from annomatic.io.base import BaseOutput
 from annomatic.io.file import create_input_handler, create_output_handler
+from annomatic.llm.base import ModelLoader
 from annomatic.llm.huggingface.model import HuggingFaceModelLoader
 from annomatic.llm.openai.model import OpenAiModelLoader
 from annomatic.llm.vllm.model import VllmModelLoader
@@ -28,15 +29,16 @@ class FileAnnotator(BaseAnnotator):
 
     def __init__(
         self,
-        batch_size: Optional[int] = None,
-        labels: Optional[List[str]] = None,
+        model_loader: ModelLoader,
         output_handler: Optional[BaseOutput] = None,
         out_path: Optional[str] = None,
         out_format: Optional[str] = None,
+        labels: Optional[List[str]] = None,
         **kwargs,
     ):
         super().__init__(
-            batch_size=batch_size,
+            model_loader=model_loader,
+            batch_size=0,  # TODO refactor
             labels=labels,
             **kwargs,
         )
@@ -151,7 +153,7 @@ class FileAnnotator(BaseAnnotator):
         self._output_handler.write(output_data)
 
 
-class OpenAiFileAnnotator(OpenAiModelLoader, FileAnnotator):
+class OpenAiFileAnnotator(FileAnnotator):
     """
     Annotator class for OpenAI models that use file inputs and outputs.
 
@@ -171,7 +173,8 @@ class OpenAiFileAnnotator(OpenAiModelLoader, FileAnnotator):
 
     def __init__(
         self,
-        model_name: str,
+        model_loader: Optional[OpenAiModelLoader] = None,
+        model_name: Optional[str] = None,
         config: Optional[OpenAiConfig] = None,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
@@ -181,69 +184,31 @@ class OpenAiFileAnnotator(OpenAiModelLoader, FileAnnotator):
         api_key: str = "",
         **kwargs,
     ):
+        if model_loader is None:
+            if model_name is None:
+                raise ValueError(
+                    "Model loader or model name must be provided!",
+                )
+            model_loader = OpenAiModelLoader(
+                model_name=model_name,
+                config=config,
+                batch_size=batch_size,
+                labels=labels,
+                system_prompt=system_prompt,
+                api_key=api_key,
+                **kwargs,
+            )
+
         super().__init__(
-            model_name=model_name,
-            config=config,
-            batch_size=batch_size,
+            model_loader=model_loader,
             labels=labels,
-            system_prompt=system_prompt,
             out_path=out_path,
             out_format=out_format,
-            api_key=api_key,
             **kwargs,
         )
 
 
-class HuggingFaceFileAnnotator(HuggingFaceModelLoader, FileAnnotator):
-    """
-    Annotator class for HuggingFace models that work with file inputs
-    and outputs.
-
-    This class can use LLMs loaded by the AutoModelForCausalLM and
-    AutoModelForSeq2SeqLM classes.
-
-    Arguments:
-        model_name (str): Name of the model.
-        config (Optional[HuggingFaceConfig]): Configuration for the model.
-        batch_size (Optional[int]): Size of the batch.
-        labels (Optional[List[str]]): List of labels that should be used
-                                        for soft parsing.
-        system_prompt (Optional[str]): System prompt for the model.
-        out_path (str): Path to the output file.
-        out_format (str): Format of the output file.
-        auto_model (str): Name of the AutoModel class to be used.
-        use_chat_template (bool): Whether to use the chat template.
-        kwargs: a dict containing additional arguments
-    """
-
-    def __init__(
-        self,
-        model_name: str,
-        config: Optional[HuggingFaceConfig] = None,
-        batch_size: Optional[int] = None,
-        labels: Optional[List[str]] = None,
-        system_prompt: Optional[str] = None,
-        out_path: str = "",
-        out_format: str = "csv",
-        auto_model: str = "AutoModelForCausalLM",
-        use_chat_template: bool = False,
-        **kwargs,
-    ):
-        super().__init__(
-            model_name=model_name,
-            config=config,
-            batch_size=batch_size,
-            labels=labels,
-            system_prompt=system_prompt,
-            out_path=out_path,
-            out_format=out_format,
-            auto_model=auto_model,
-            use_chat_template=use_chat_template,
-            **kwargs,
-        )
-
-
-class VllmFileAnnotator(VllmModelLoader, FileAnnotator):
+class VllmFileAnnotator(FileAnnotator):
     """
     Annotator class for Vllm models that use file inputs and outputs.
 
@@ -262,7 +227,8 @@ class VllmFileAnnotator(VllmModelLoader, FileAnnotator):
 
     def __init__(
         self,
-        model_name: str,
+        model_loader: Optional[VllmModelLoader] = None,
+        model_name: Optional[str] = None,
         config: Optional[VllmConfig] = None,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
@@ -271,13 +237,87 @@ class VllmFileAnnotator(VllmModelLoader, FileAnnotator):
         out_format: str = "csv",
         **kwargs,
     ):
+        if model_loader is None:
+            if model_name is None:
+                raise ValueError(
+                    "Model loader or model name must be provided!",
+                )
+            model_loader = VllmModelLoader(
+                model_name=model_name,
+                config=config,
+                batch_size=batch_size,
+                labels=labels,
+                system_prompt=system_prompt,
+                **kwargs,
+            )
+
         super().__init__(
-            model_name=model_name,
-            config=config,
-            batch_size=batch_size,
+            model_loader=model_loader,
             labels=labels,
-            system_prompt=system_prompt,
             out_path=out_path,
             out_format=out_format,
+            **kwargs,
+        )
+
+
+class HuggingFaceFileAnnotator(FileAnnotator):
+    """
+    Annotator class for HuggingFace models that work with file inputs
+    and outputs.
+
+    This class can use LLMs loaded by the AutoModelForCausalLM and
+    AutoModelForSeq2SeqLM classes.
+
+    Arguments:
+        model_loader (Optional[HuggingFaceModelLoader]): Model loader for the
+                                                        HuggingFace model.
+        model_name (Optional[str]): Name of the model.
+        config (Optional[HuggingFaceConfig]): Configuration for the model.
+        batch_size (Optional[int]): Size of the batch.
+        labels (Optional[List[str]]): List of labels that should be used
+                                        for soft parsing.
+        system_prompt (Optional[str]): System prompt for the model.
+        out_path (str): Path to the output file.
+        out_format (str): Format of the output file.
+        auto_model (str): Name of the AutoModel class to be used.
+        use_chat_template (bool): Whether to use the chat template.
+        kwargs: a dict containing additional arguments
+    """
+
+    def __init__(
+        self,
+        model_loader: Optional[HuggingFaceModelLoader] = None,
+        model_name: Optional[str] = None,
+        config: Optional[HuggingFaceConfig] = None,
+        batch_size: Optional[int] = None,
+        labels: Optional[List[str]] = None,
+        system_prompt: Optional[str] = None,
+        out_path: str = "",
+        out_format: str = "csv",
+        auto_model: str = "AutoModelForCausalLM",
+        use_chat_template: bool = False,
+        **kwargs,
+    ):
+        if model_loader is None:
+            if model_name is None:
+                raise ValueError(
+                    "Model loader or model name must be provided!",
+                )
+            model_loader = HuggingFaceModelLoader(
+                model_name=model_name,
+                config=config,
+                batch_size=batch_size,
+                labels=labels,
+                system_prompt=system_prompt,
+                auto_model=auto_model,
+                use_chat_template=use_chat_template,
+                **kwargs,
+            )
+
+        super().__init__(
+            model_loader=model_loader,
+            out_path=out_path,
+            out_format=out_format,
+            labels=labels,
             **kwargs,
         )

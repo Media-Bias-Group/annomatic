@@ -122,10 +122,9 @@ class ModelLoader(ABC):
         self.system_prompt = system_prompt
         self.lib_args = lib_args or {}
         self._model: Optional[Model] = None
-        super().__init__(**kwargs)
 
     @abstractmethod
-    def _load_model(self) -> Model:
+    def load_model(self) -> Model:
         """
         Loads the model and store it in self.model.
 

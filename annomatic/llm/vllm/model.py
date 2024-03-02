@@ -150,7 +150,7 @@ class VllmModelLoader(ModelLoader):
 
         self.update_config_generation_args(generation_args)
 
-    def _load_model(self) -> Model:
+    def load_model(self) -> Model:
         from annomatic.llm.vllm import VllmModel
 
         if not isinstance(self.config, VllmConfig):

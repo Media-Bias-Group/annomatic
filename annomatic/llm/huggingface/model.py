@@ -328,7 +328,7 @@ class HuggingFaceModelLoader(ModelLoader, ABC):
 
         self.update_config_generation_args(generation_args)
 
-    def _load_model(self) -> Model:
+    def load_model(self) -> Model:
         if not isinstance(self.config, HuggingFaceConfig):
             raise ValueError(
                 "Huggingface models require a HuggingfaceConfig object.",
