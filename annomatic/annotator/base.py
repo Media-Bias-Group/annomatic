@@ -19,6 +19,73 @@ from annomatic.retriever.base import Retriever
 LOGGER = logging.getLogger(__name__)
 
 
+class PostProcessor(ABC):
+    """
+    Base class for post processors.
+    """
+
+    @abstractmethod
+    def process(
+        self,
+        df: pd.DataFrame,
+        input_col,
+        output_col,
+        labels,
+    ) -> pd.DataFrame:
+        """
+        Processes the model output before it is stored.
+
+        Args:
+             df: the model output to be processed as a DataFrame
+             input_col: the input column
+             output_col: the output column
+             labels: the labels to be used for soft parsing
+
+        Returns:
+            the processed model output to be stored as a DataFrame
+        """
+        raise NotImplementedError()
+
+
+class DefaultPostProcessor(PostProcessor):
+    """
+    Base class for post processors.
+    Post processors are used to process the model output before it is stored.
+    """
+
+    def process(
+        self,
+        df: pd.DataFrame,
+        input_col: str,
+        output_col: str,
+        labels: List[str],
+    ) -> pd.DataFrame:
+        """
+        Processes the model output before it is stored.
+
+        Finds the label in the model output and stores it in the output column.
+
+        If labels are not known, the model output is stored as is.
+
+        Args:
+                df: the model output to be processed as a DataFrame
+                input_col: the input column
+                output_col: the output column
+                labels: the labels to be used for soft parsing
+
+        Returns:
+            the processed model output to be stored as a DataFrame
+        """
+
+        if labels is None:
+            return df
+        df[output_col] = df[input_col].apply(
+            lambda x: util.find_label(x, labels),
+        )
+
+        return df
+
+
 class ModelLoadMixin(ABC):
     """
     Mixin for annotator to load a model.
@@ -167,6 +234,7 @@ class BaseAnnotator(FewShotMixin, ABC):
         self,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -177,10 +245,11 @@ class BaseAnnotator(FewShotMixin, ABC):
         self.data_variable: Optional[str] = None
         self._model: Optional[Model] = None
         self._prompt: Optional[Prompt] = None
+        self.post_processor = post_processor
 
         if not isinstance(self, ModelLoadMixin):
             raise ValueError(
-                "ModelLoadMixin not implemented for this class!",
+                "ModelLoader not implemented for this class!",
             )
 
         self._model = self._load_model()
@@ -358,21 +427,6 @@ class BaseAnnotator(FewShotMixin, ABC):
             self.batch_size = total_rows
             return 1
 
-    def _soft_parse(
-        self,
-        df: pd.DataFrame,
-        in_col: str,
-        parsed_col: str,
-    ) -> pd.DataFrame:
-        if self._labels is None:
-            raise ValueError("Labels are not set!")
-
-        df[parsed_col] = df[in_col].apply(
-            lambda x: util.find_label(x, self._labels),
-        )
-
-        return df
-
     def _annotate(
         self,
         **kwargs,
@@ -424,12 +478,14 @@ class BaseAnnotator(FewShotMixin, ABC):
 
         try:
             # if labels are known perform soft parsing
-            if self._labels:
-                self._soft_parse(
+            if self.post_processor:
+                output_df = self.post_processor.process(
                     df=output_df,
-                    in_col="response",
-                    parsed_col="label",
+                    input_col="response",
+                    output_col="label",
+                    labels=self._labels,
                 )
+
             self.store_annotated_data(output_df)
             return output_df
 
