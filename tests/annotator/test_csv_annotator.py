@@ -54,6 +54,7 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
             out_path="./tests/data/output.csv",
             model_loader=self.mock_model_loader,
             annotation_process=DefaultAnnotation(batch_size=1),
+            labels=["PERSUASIVE TECHNIQUES", "NO PERSUASIVE TECHNIQUES"],
         )
         data = pd.read_csv(
             "./tests/data/input.csv",
@@ -166,7 +167,7 @@ class HuggingFaceTests(unittest.TestCase):
         annotator = HuggingFaceFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
-            labels=["BIASED", "NON-BIASED"],
+            labels=["PERSUASIVE TECHNIQUES", "NO PERSUASIVE TECHNIQUES"],
             model_loader=self.mock_model_loader,
             annotation_process=DefaultAnnotation(),
         )
@@ -275,8 +276,6 @@ class VllmFileAnnotatorTests(unittest.TestCase):
         annotator = VllmFileAnnotator(
             model_name="model",
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
-            annotation_process=DefaultAnnotation(),
         )
         template = (
             "Instruction: '{input}'"

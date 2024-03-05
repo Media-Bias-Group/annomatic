@@ -289,7 +289,12 @@ class YourTestClass(unittest.TestCase):
         )
 
         annotator._labels = ["BIASED", "NOT BIASED"]
-        annotator._soft_parse(df, "response", "label")
+        annotator.post_processor.process(
+                df,
+                "response",
+                "label",
+                annotator._labels,
+            )
 
         assert df["label"].iloc[0] == "BIASED"
         assert df["label"].iloc[1] == "NOT BIASED"
