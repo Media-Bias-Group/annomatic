@@ -17,6 +17,12 @@ class AnnotationProcess(ABC):
     Abstract class for the annotation process.
     """
 
+    def __init__(
+        self,
+        labels: Optional[List[str]] = None,
+    ):
+        self.labels = labels
+
     @abstractmethod
     def annotate(
         self,
@@ -66,8 +72,12 @@ class DefaultAnnotation(AnnotationProcess):
 
     """
 
-    def __init__(self, batch_size: Optional[int] = None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        labels: Optional[List[str]] = None,
+        batch_size: Optional[int] = None,
+    ):
+        super().__init__(labels=labels)
         self.context: Union[Retriever, pd.DataFrame, None] = None
         self.batch_size = batch_size
 
@@ -174,35 +184,31 @@ class DefaultAnnotation(AnnotationProcess):
             raise ValueError("Data is not set!")
 
         output_data = []
-        try:
-            total_rows = data.shape[0]
-            num_batches = self._num_batches(total_rows)
 
-            LOGGER.info(f"Starting Annotation of {total_rows}")
-            for idx in tqdm(range(num_batches)):
-                batch = data.iloc[
-                    idx * self.batch_size : (idx + 1) * self.batch_size
-                ]
-                entries = self._annotate_batch(
-                    model=model,
-                    prompt=prompt,
-                    batch=batch,
-                    data_variable=data_variable,
-                    **kwargs,
-                )
-                if entries:
-                    output_data.extend(entries)
+        total_rows = data.shape[0]
+        num_batches = self._num_batches(total_rows)
 
-            # handle rest of the data
-            if num_batches * self.batch_size < total_rows:
-                batch = data.iloc[num_batches * self.batch_size :]
-                entries = self._annotate_batch(batch, **kwargs)
-                if entries:
-                    output_data.extend(entries)
+        LOGGER.info(f"Starting Annotation of {total_rows}")
+        for idx in tqdm(range(num_batches)):
+            batch = data.iloc[
+                idx * self.batch_size : (idx + 1) * self.batch_size
+            ]
+            entries = self._annotate_batch(
+                model=model,
+                prompt=prompt,
+                batch=batch,
+                data_variable=data_variable,
+                **kwargs,
+            )
+            if entries:
+                output_data.extend(entries)
 
-        except Exception as read_error:
-            # Handle the input reading error
-            LOGGER.error(f"Input reading error: {str(read_error)}")
+        # handle rest of the data
+        if num_batches * self.batch_size < total_rows:
+            batch = data.iloc[num_batches * self.batch_size :]
+            entries = self._annotate_batch(batch, **kwargs)
+            if entries:
+                output_data.extend(entries)
 
         LOGGER.info(f"Successfully annotated {len(output_data)} rows.")
 
@@ -284,17 +290,9 @@ class DefaultAnnotation(AnnotationProcess):
         if prompt is None:
             raise ValueError("Prompt is not set!")
 
-        # TODO integrate back
-        # label_var = prompt.get_label_variable()
-        # if (
-        #    label_var is not None
-        #    and kwargs.get(
-        #    label_var,
-        # )
-        #    is None
-        #    and self._labels is not None
-        # ):
-        #    kwargs[label_var] = self._labels
+        label_var = prompt.get_label_variable()
+        if label_var is not None and self.labels is not None:
+            kwargs[label_var] = self.labels
 
         messages: List[str] = []
         for index, row in batch.iterrows():

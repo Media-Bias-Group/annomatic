@@ -158,8 +158,9 @@ class FileAnnotator(BaseAnnotator):
 
         self._validate_labels(**kwargs)
 
-        if self.post_processor.labels is None:
+        if self._labels is not None:
             self.post_processor.labels = self._labels
+            self.annotation_process.labels = self._labels
 
         if (
             self._model is None

@@ -1,9 +1,12 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
 import pandas as pd
 
-from annomatic.annotator import util
+from annomatic.annotator.util import find_label
+
+LOGGER = logging.getLogger(__name__)
 
 
 class PostProcessor(ABC):
@@ -27,24 +30,25 @@ class PostProcessor(ABC):
         df: pd.DataFrame,
     ) -> pd.DataFrame:
         """
-        Processes the model output before it is stored.
+        Processes the given dataframe.
 
         Args:
-             df: the model output to be processed as a DataFrame
-             input_col: the input column
-             output_col: the output column
-             labels: the labels to be used for soft parsing
+            df: dataframe to be processed as a DataFrame
 
         Returns:
-            the processed model output to be stored as a DataFrame
+            the processed dataframe
         """
         raise NotImplementedError()
 
 
 class DefaultPostProcessor(PostProcessor):
     """
-    Base class for post processors.
-    Post processors are used to process the model output before it is stored.
+    Default class for post processors.
+
+    If labels are known, the in_colum is processed to find the label and
+    stored in the output column. Only store if the label is found uniquely.
+
+    Otherwise, store '?' in output column.
     """
 
     def __init__(
@@ -60,26 +64,25 @@ class DefaultPostProcessor(PostProcessor):
         df: pd.DataFrame,
     ) -> pd.DataFrame:
         """
-        Processes the model output before it is stored.
+        Processes the given dataframe.
 
-        Finds the label in the model output and stores it in the output column.
 
-        If labels are not known, the model output is stored as is.
+        If labels are known, the in_colum is processed to find the label and
+        stored in the output column. Only store if the label is found uniquely.
+        Otherwise, store '?' in output column.
 
         Args:
-                df: the model output to be processed as a DataFrame
-                input_col: the input column
-                output_col: the output column
-                labels: the labels to be used for soft parsing
+                df: dataframe to be processed as a DataFrame
 
         Returns:
-            the processed model output to be stored as a DataFrame
+            the processed dataframe
         """
 
         if self.labels is None:
+            LOGGER.info("No Post, processing done")
             return df
         df[self.output_col] = df[self.input_col].apply(
-            lambda x: util.find_label(x, self.labels),
+            lambda x: find_label(x, self.labels),
         )
-
+        LOGGER.info("Post processing done")
         return df
