@@ -290,13 +290,10 @@ class YourTestClass(unittest.TestCase):
             model_loader=self.mock_model_loader,
         )
 
-        annotator._labels = ["BIASED", "NOT BIASED"]
+        annotator.post_processor.labels = ["BIASED", "NOT BIASED"]
         annotator.post_processor.process(
-                df,
-                "response",
-                "label",
-                annotator._labels,
-            )
+            df,
+        )
 
         assert df["label"].iloc[0] == "BIASED"
         assert df["label"].iloc[1] == "NOT BIASED"

@@ -136,6 +136,17 @@ class FileAnnotator(BaseAnnotator):
             return_df: bool whether to return the annotated data as a DataFrame
             kwargs: a dict containing the input variables for templates
         """
+
+        # check that all required components are set
+        if self.annotation_process is None:
+            raise ValueError("Annotation process is not set!")
+
+        if self.post_processor is None:
+            raise ValueError("Post processor is not set!")
+
+        if self._output_handler is None:
+            raise ValueError("Output handler is not set!")
+
         if data is not None:
             self.set_data(
                 data=data,
@@ -146,6 +157,9 @@ class FileAnnotator(BaseAnnotator):
             self.set_prompt(prompt=kwargs.get("prompt", None))
 
         self._validate_labels(**kwargs)
+
+        if self.post_processor.labels is None:
+            self.post_processor.labels = self._labels
 
         if (
             self._model is None
@@ -165,6 +179,7 @@ class FileAnnotator(BaseAnnotator):
             **kwargs,
         )
 
+        self.post_processor.process(df=annotated_data)
         self._output_handler.write(annotated_data)
 
         if return_df:

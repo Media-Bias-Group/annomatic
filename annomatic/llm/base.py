@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+
+from annomatic.config.base import ModelConfig
 
 
 class Response:
