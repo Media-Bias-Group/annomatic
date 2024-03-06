@@ -46,7 +46,6 @@ class YourTestClass(unittest.TestCase):
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
             model_loader=self.mock_model_loader,
-        model_loader=self.mock_model_loader,
             annotation_process=DefaultAnnotation(),
         )
         annotator.data_variable = "text"
@@ -91,7 +90,6 @@ class YourTestClass(unittest.TestCase):
                 "label": ["BIASED", "NOT BIASED"],
             },
         )
-
         annotator.data_variable = "text"
 
         prompt = Prompt()
@@ -102,7 +100,8 @@ class YourTestClass(unittest.TestCase):
         annotator.set_prompt(prompt)
         annotator.set_context(df_examples)
         message = annotator.annotation_process.fill_prompt(
-            batch=df,prompt=prompt,
+            batch=df,
+            prompt=prompt,
             data_variable="text",
             label=["BIASED", "NOT BIASED"],
         )
@@ -151,11 +150,12 @@ class YourTestClass(unittest.TestCase):
         prompt.add_part("Instruction: '{text}'")
         prompt.add_labels_part("Classify the sentence above as {label}.")
         prompt.add_part("Output: ")
-
         annotator.set_prompt(prompt)
-annotator.set_context(retriever)
+
+        annotator.set_context(retriever)
         message = annotator.annotation_process.fill_prompt(
-            batch=df,prompt=prompt,
+            batch=df,
+            prompt=prompt,
             data_variable="text",
             label=["BIASED", "NOT BIASED"],
         )

@@ -278,6 +278,7 @@ class VllmFileAnnotatorTests(unittest.TestCase):
             out_path="./tests/data/output.csv",
             labels=["PERSUASIVE TECHNIQUES", "NO PERSUASIVE TECHNIQUES"],
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
         template = (
             "Instruction: '{input}'"
