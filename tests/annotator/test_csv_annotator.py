@@ -9,6 +9,7 @@ from annomatic.annotator import (
     OpenAiFileAnnotator,
     VllmFileAnnotator,
 )
+from annomatic.annotator.annotation import DefaultAnnotation
 from annomatic.llm import Response, ResponseList
 from annomatic.prompt.prompt import Prompt
 
@@ -52,8 +53,8 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
             model_name="model",
             out_path="./tests/data/output.csv",
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(batch_size=1),
         )
-        annotator.batch_size = 1
         data = pd.read_csv(
             "./tests/data/input.csv",
         )
@@ -72,8 +73,6 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
             data=data,
             data_variable="input",
         )
-
-        self.mock_model._num_batches = annotator._num_batches
 
         annotator.annotate()
 
@@ -102,6 +101,7 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
             model_name="model",
             out_path="./tests/data/output.csv",
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
 
         template = (
@@ -114,7 +114,12 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
         )
         annotator.set_prompt(prompt=template)
         annotator.data_variable = "input"
-        res = annotator._annotate_batch(inp)
+        res = annotator.annotation_process._annotate_batch(
+            model=self.mock_model,
+            batch=inp,
+            prompt=Prompt(template),
+            data_variable="input",
+        )
 
         assert len(res) == 1
 
@@ -163,6 +168,7 @@ class HuggingFaceTests(unittest.TestCase):
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NON-BIASED"],
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
         annotator.batch_size = 5
 
@@ -207,6 +213,7 @@ class HuggingFaceTests(unittest.TestCase):
             model_name="model",
             out_path="./tests/data/output.csv",
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
         template = (
             "Instruction: '{input}'"
@@ -218,8 +225,12 @@ class HuggingFaceTests(unittest.TestCase):
         )
         annotator.set_prompt(prompt=template)
         annotator.data_variable = "input"
-        res = annotator._annotate_batch(inp)
-
+        res = annotator.annotation_process._annotate_batch(
+            model=self.mock_model,
+            batch=inp,
+            prompt=Prompt(template),
+            data_variable="input",
+        )
         assert len(res) == inp.shape[0]
 
 
@@ -265,6 +276,7 @@ class VllmFileAnnotatorTests(unittest.TestCase):
             model_name="model",
             out_path="./tests/data/output.csv",
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
         template = (
             "Instruction: '{input}'"
@@ -301,6 +313,7 @@ class VllmFileAnnotatorTests(unittest.TestCase):
             model_name="model",
             out_path="./tests/data/output.csv",
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
         template = (
             "Instruction: '{input}'"
@@ -310,8 +323,13 @@ class VllmFileAnnotatorTests(unittest.TestCase):
             "\n\n"
             "Output: "
         )
+
         annotator.set_prompt(prompt=template)
         annotator.data_variable = "input"
-        res = annotator._annotate_batch(inp)
-
+        res = annotator.annotation_process._annotate_batch(
+            model=self.mock_model,
+            batch=inp,
+            prompt=Prompt(template),
+            data_variable="input",
+        )
         assert len(res) == inp.shape[0]

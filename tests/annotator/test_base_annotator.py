@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from annomatic.annotator import HuggingFaceFileAnnotator
+from annomatic.annotator.annotation import DefaultAnnotation
 from annomatic.llm import Response, ResponseList
 from annomatic.prompt import Prompt
 from annomatic.retriever import DiversityRetriever
@@ -45,8 +46,8 @@ class YourTestClass(unittest.TestCase):
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
-
         annotator.data_variable = "text"
         prompt = Prompt()
         prompt.add_part("Instruction: '{text}'")
@@ -54,8 +55,10 @@ class YourTestClass(unittest.TestCase):
         prompt.add_part("Output: ")
 
         annotator.set_prompt(prompt)
-        message = annotator.fill_prompt(
+        message = annotator.annotation_process.fill_prompt(
             batch=df,
+            prompt=prompt,
+            data_variable="text",
             label=["BIASED", "NOT BIASED"],
         )
 
@@ -71,6 +74,7 @@ class YourTestClass(unittest.TestCase):
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
 
         df = pd.DataFrame(
@@ -86,17 +90,18 @@ class YourTestClass(unittest.TestCase):
                 "label": ["BIASED", "NOT BIASED"],
             },
         )
-
         annotator.data_variable = "text"
-        annotator.context = df_examples
         prompt = Prompt()
         prompt.add_part("Instruction: '{text}'")
         prompt.add_labels_part("Classify the sentence above as {label}.")
         prompt.add_part("Output: ")
 
         annotator.set_prompt(prompt)
-        message = annotator.fill_prompt(
+        annotator.set_context(df_examples)
+        message = annotator.annotation_process.fill_prompt(
             batch=df,
+            prompt=prompt,
+            data_variable="text",
             label=["BIASED", "NOT BIASED"],
         )
 
@@ -118,6 +123,7 @@ class YourTestClass(unittest.TestCase):
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
 
         df = pd.DataFrame(
@@ -138,15 +144,17 @@ class YourTestClass(unittest.TestCase):
             label_variable="label",
         )
         annotator.data_variable = "text"
-        annotator.context = retriever
         prompt = Prompt()
         prompt.add_part("Instruction: '{text}'")
         prompt.add_labels_part("Classify the sentence above as {label}.")
         prompt.add_part("Output: ")
-
         annotator.set_prompt(prompt)
-        message = annotator.fill_prompt(
+
+        annotator.set_context(retriever)
+        message = annotator.annotation_process.fill_prompt(
             batch=df,
+            prompt=prompt,
+            data_variable="text",
             label=["BIASED", "NOT BIASED"],
         )
 
@@ -164,6 +172,7 @@ class YourTestClass(unittest.TestCase):
             model_name="mock",
             out_path="./tests/data/output.csv",
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
         annotator.set_data(
             data="./tests/data/input.csv",
@@ -176,6 +185,7 @@ class YourTestClass(unittest.TestCase):
             model_name="mock",
             out_path="./tests/data/output.csv",
             model_loader=self.mock_model_loader,
+            annotation_process=DefaultAnnotation(),
         )
 
         template = (

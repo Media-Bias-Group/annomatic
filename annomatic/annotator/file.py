@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 
 import pandas as pd
 
+from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.base import LOGGER, BaseAnnotator
 from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 from annomatic.io.base import BaseOutput
@@ -10,6 +11,7 @@ from annomatic.llm.base import ModelLoader
 from annomatic.llm.huggingface.model import HuggingFaceModelLoader
 from annomatic.llm.openai.model import OpenAiModelLoader
 from annomatic.llm.vllm.model import VllmModelLoader
+from annomatic.prompt import Prompt
 
 
 class FileAnnotator(BaseAnnotator):
@@ -30,6 +32,7 @@ class FileAnnotator(BaseAnnotator):
     def __init__(
         self,
         model_loader: ModelLoader,
+        annotation_process: AnnotationProcess = DefaultAnnotation(),
         output_handler: Optional[BaseOutput] = None,
         out_path: Optional[str] = None,
         out_format: Optional[str] = None,
@@ -38,6 +41,7 @@ class FileAnnotator(BaseAnnotator):
     ):
         super().__init__(
             model_loader=model_loader,
+            annotation_process=annotation_process,
             batch_size=0,  # TODO refactor
             labels=labels,
             **kwargs,
@@ -55,6 +59,22 @@ class FileAnnotator(BaseAnnotator):
                 "Must provide either an output_handler "
                 "or both out_path and out_format.",
             )
+
+    def set_context(
+        self,
+        context: Union[pd.DataFrame, str],
+        prompt: Union[str, Prompt, None] = None,
+    ):
+        """
+        Sets the context for context-based annotations.
+        """
+        if self.annotation_process is None:
+            raise ValueError("Annotation process is not set!")
+
+        if isinstance(prompt, str):
+            prompt = Prompt(content=prompt)
+
+        self.annotation_process.set_context(context, prompt or self._prompt)
 
     def set_data(
         self,
@@ -127,7 +147,25 @@ class FileAnnotator(BaseAnnotator):
 
         self._validate_labels(**kwargs)
 
-        annotated_data = self._annotate(**kwargs)
+        if (
+            self._model is None
+            or self._prompt is None
+            or self.data_variable is None
+        ):
+            raise ValueError(
+                "Model, prompt or data variable is not set! ",
+            )
+
+        annotated_data = self.annotation_process.annotate(
+            model=self._model,
+            prompt=self._prompt,
+            data=self.data,
+            data_variable=self.data_variable,
+            batch_size=self.batch_size,
+            **kwargs,
+        )
+
+        self._output_handler.write(annotated_data)
 
         if return_df:
             return annotated_data

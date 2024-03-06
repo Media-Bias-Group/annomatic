@@ -1,114 +1,17 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import pandas as pd
-from tqdm import tqdm
 
-from annomatic.annotator import util
-from annomatic.config.base import (
-    HuggingFaceConfig,
-    ModelConfig,
-    OpenAiConfig,
-    VllmConfig,
-)
+from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.llm.base import Model, ModelLoader, ResponseList
 from annomatic.prompt import Prompt
-from annomatic.retriever.base import Retriever
 
 LOGGER = logging.getLogger(__name__)
 
 
-class FewShotMixin(ABC):
-    """
-    Mixin for annotator to load a few-shot examples.
-
-    Attributes:
-        context (Optional[pd.DataFrame]): The context for the ICL prompt.
-        icl_prompt (Optional[Prompt]): The ICL prompt.
-    """
-
-    def __init__(self, **kwargs):
-        self.context: Optional[pd.DataFrame] = None
-        self.icl_prompt: Optional[Prompt] = None
-
-    def set_context(
-        self,
-        context: Union[Retriever, pd.DataFrame],
-        prompt: Optional[Prompt] = None,
-    ) -> None:
-        """
-        Sets the context for the ICL prompt. The context can be either a
-        Retriever or a pd.DataFrame.
-
-        Args:
-            context: the context for the ICL prompt
-            icl_prompt: a specific prompt used for the examples. If no
-                additional prompt is set, the regular prompt is used and the
-                examples are added at the end.
-        """
-        self.context = context
-        self.icl_prompt = prompt
-
-    def create_context_part(
-        self,
-        query: Optional[str],
-        **kwargs,
-    ) -> str:
-        """
-        Creates an ICL prompt. If the label is known, it is added to the
-        prompt at the end.
-
-        Args:
-            query: the sentence to get the icl context for
-            kwargs: a dict containing the input variables for templates
-
-        Returns:
-            str: the ICL prompt part.
-        """
-
-        # if no special icl prompt set use regular prompt
-        if self.icl_prompt is None:
-            if hasattr(self, "_prompt"):
-                self.icl_prompt = self._prompt
-            else:
-                raise ValueError("Prompt is not set!")
-
-        label_var = self.icl_prompt.get_label_variable()
-        if label_var is None:
-            raise ValueError("Label variable not found in the ICL prompt.")
-
-        if self.context is None or label_var is None:
-            raise ValueError("Examples are not set!")
-
-        pred_label = None
-        message = ""
-
-        if isinstance(self.context, Retriever):
-            context = self.context.select(query=query)
-        else:
-            context = self.context
-
-        for idx, row in context.iterrows():
-            row_dict: Dict[str, Any] = row.to_dict()
-
-            if label_var in row_dict:
-                pred_label = row_dict[label_var]
-
-            row_dict[label_var] = kwargs[label_var]
-            prompt = self.icl_prompt(**row_dict)
-
-            if pred_label is not None:
-                prompt += f"{pred_label}\n\n"
-            else:
-                prompt += "\n\n"
-
-            message += prompt
-
-        return message
-
-
-class BaseAnnotator(FewShotMixin, ABC):
+class BaseAnnotator(ABC):
     """
     Base class for annotator classes
     """
@@ -116,6 +19,7 @@ class BaseAnnotator(FewShotMixin, ABC):
     def __init__(
         self,
         model_loader: ModelLoader,
+        annotation_process: AnnotationProcess = DefaultAnnotation(),
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
         **kwargs,
@@ -128,7 +32,9 @@ class BaseAnnotator(FewShotMixin, ABC):
         self.data_variable: Optional[str] = None
         self._model: Optional[Model] = None
         self._prompt: Optional[Prompt] = None
+
         self.model_loader = model_loader
+        self.annotation_process = annotation_process
 
         # TODO make lazy loading possible
         self._model = self.model_loader.load_model()
@@ -151,13 +57,6 @@ class BaseAnnotator(FewShotMixin, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_num_samples(self):
-        """
-        Returns the number of data instances to be annotated.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
     def set_data(
         self,
         data: Any,
@@ -171,44 +70,6 @@ class BaseAnnotator(FewShotMixin, ABC):
             data_variable: the variable name of the input data
         """
         raise NotImplementedError()
-
-    def fill_prompt(self, batch: pd.DataFrame, **kwargs) -> List[str]:
-        """
-        Creates the prompt passed to the model.
-
-        Args:
-            batch: pd.DataFrame representing the input data.
-            kwargs: a dict containing the input variables for templates(
-        """
-        if self._prompt is None:
-            raise ValueError("Prompt is not set!")
-
-        label_var = self._prompt.get_label_variable()
-
-        if (
-            label_var is not None
-            and kwargs.get(
-                label_var,
-            )
-            is None
-            and self._labels is not None
-        ):
-            kwargs[label_var] = self._labels
-
-        messages: List[str] = []
-        for index, row in batch.iterrows():
-            if self.context is not None:
-                icl_part = self.create_context_part(
-                    query=row[str(self.data_variable)],
-                    **kwargs,
-                )
-            else:
-                icl_part = ""
-
-            kwargs[str(self.data_variable)] = row[str(self.data_variable)]
-            messages.append(icl_part + self._prompt(**kwargs))
-
-        return messages
 
     @abstractmethod
     def store_annotated_data(self, output_data: pd.DataFrame):
@@ -238,6 +99,7 @@ class BaseAnnotator(FewShotMixin, ABC):
 
         return self.data_variable in self._prompt.get_variables()
 
+    # TODO remove how to handle this?
     def _model_predict(self, messages: List[str]) -> ResponseList:
         """
         Wrapper of the model predict method.
@@ -289,139 +151,3 @@ class BaseAnnotator(FewShotMixin, ABC):
                 raise ValueError(
                     "Labels in prompt and Annotator do not match!",
                 )
-
-    def _num_batches(self, total_rows: int):
-        """
-        Calculates the number of batches.
-
-        If self.batch_size is not set, the whole dataset is used as a batch.
-
-        Args:
-            total_rows: int representing the total number of rows.
-        """
-        if self.batch_size:
-            return total_rows // self.batch_size
-        else:
-            # if no batch size is set, use the whole dataset as a batch
-            self.batch_size = total_rows
-            return 1
-
-    def _soft_parse(
-        self,
-        df: pd.DataFrame,
-        in_col: str,
-        parsed_col: str,
-    ) -> pd.DataFrame:
-        if self._labels is None:
-            raise ValueError("Labels are not set!")
-
-        df[parsed_col] = df[in_col].apply(
-            lambda x: util.find_label(x, self._labels),
-        )
-
-        return df
-
-    def _annotate(
-        self,
-        **kwargs,
-    ) -> Optional[pd.DataFrame]:
-        """
-        Annotates the input data and returns it as a DataFrame.
-        Assumes that data and prompt is set.
-
-        Args:
-            kwargs: a dict containing the input variables for templates
-        """
-
-        if self.data is None:
-            raise ValueError("Data is not set!")
-
-        output_data = []
-        try:
-            total_rows = self.get_num_samples()
-            num_batches = self._num_batches(total_rows)
-
-            LOGGER.info(f"Starting Annotation of {total_rows}")
-            for idx in tqdm(range(num_batches)):
-                batch = self.data.iloc[
-                    idx * self.batch_size : (idx + 1) * self.batch_size
-                ]
-                entries = self._annotate_batch(batch, **kwargs)
-                if entries:
-                    output_data.extend(entries)
-
-            # handle rest of the data
-            if num_batches * self.batch_size < total_rows:
-                batch = self.data.iloc[num_batches * self.batch_size :]
-                entries = self._annotate_batch(batch, **kwargs)
-                if entries:
-                    output_data.extend(entries)
-
-        except Exception as read_error:
-            # Handle the input reading error
-            LOGGER.error(f"Input reading error: {str(read_error)}")
-
-        LOGGER.info("Annotation done!")
-        LOGGER.info(f"Successfully annotated {len(output_data)} rows.")
-
-        try:
-            output_df = pd.DataFrame(output_data)
-        except Exception as df_error:
-            LOGGER.error(f"Output dataframe error: {str(df_error)}")
-            return None
-
-        try:
-            # if labels are known perform soft parsing
-            if self._labels:
-                self._soft_parse(
-                    df=output_df,
-                    in_col="response",
-                    parsed_col="label",
-                )
-            self.store_annotated_data(output_df)
-            return output_df
-
-        except Exception as write_error:
-            LOGGER.error(f"Output writing error: {str(write_error)}")
-            return output_df
-
-    def _annotate_batch(self, batch: pd.DataFrame, **kwargs) -> List[dict]:
-        """
-        Annotates the input CSV file and writes the annotated data to the
-        output CSV file.
-
-        Args:
-            batch: pd.DataFrame representing the input data.
-            kwargs: a dict containing the input variables for templates
-
-        Returns:
-            List[dict]: a list of dicts containing the annotated data
-        """
-
-        if self._model is None or self._prompt is None:
-            raise ValueError(
-                "Model or prompt is not set! "
-                "Please call set_data and set_prompt before annotate.",
-            )
-
-        try:
-            messages = self.fill_prompt(batch=batch, **kwargs)
-            responses = self._model_predict(messages)
-
-            annotated_data = []
-            for idx, response in enumerate(responses):
-                annotated_data.append(
-                    {
-                        self.data_variable: batch.iloc[idx][
-                            str(self.data_variable)
-                        ],
-                        "response": response.answer,
-                        "raw_data": response.data,
-                        "query": response.query,
-                    },
-                )
-            return annotated_data
-
-        except Exception as exception:
-            LOGGER.error(f"Prediction error: {str(exception)}")
-            return []
