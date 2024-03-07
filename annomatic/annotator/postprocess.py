@@ -20,6 +20,12 @@ class PostProcessor(ABC):
         output_col: str,
         labels: Optional[List[str]],
     ):
+        """
+        Args:
+            input_col: input column name as a string
+            output_col: output column name as a string
+            labels: optional list of labels as a list of strings
+        """
         self.input_col = input_col
         self.output_col = output_col
         self.labels = labels

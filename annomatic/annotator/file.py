@@ -188,24 +188,6 @@ class FileAnnotator(BaseAnnotator):
         else:
             return None
 
-    def get_num_samples(self):
-        """
-        Returns the number of data instances to be annotated.
-        """
-        return self.data.shape[0]
-
-    def store_annotated_data(self, output_data: pd.DataFrame):
-        """
-        Write the output data to the output CSV file.
-
-        Args:
-            output_data: List[dict] representing the output data.
-        """
-        if self._output_handler is None:
-            raise ValueError("Output handler is not set!")
-
-        self._output_handler.write(output_data)
-
 
 class OpenAiFileAnnotator(FileAnnotator):
     """

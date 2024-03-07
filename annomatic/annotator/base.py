@@ -74,17 +74,6 @@ class BaseAnnotator(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def store_annotated_data(self, output_data: pd.DataFrame):
-        """
-        Stores the annotated data in a csv file.
-
-        Args:
-            output_data: a list of dicts containing the annotated data
-
-        """
-        raise NotImplementedError()
-
     def _validate_data_variable(self) -> bool:
         """
         Validates the data variable.
