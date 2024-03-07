@@ -32,7 +32,7 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
 
         # Patch the HuggingFaceModelLoader to return the mocked model loader
         self.patcher_model_loader = patch(
-            "annomatic.llm.openai.model.OpenAiModelLoader",
+            "annomatic.llm.openai.loader.OpenAiModelLoader",
             return_value=self.mock_model_loader,
         )
         self.patcher_model_loader.start()
@@ -143,7 +143,7 @@ class HuggingFaceTests(unittest.TestCase):
 
         # Patch the HuggingFaceModelLoader to return the mocked model loader
         self.patcher_model_loader = patch(
-            "annomatic.llm.huggingface.model.HuggingFaceModelLoader",
+            "annomatic.llm.huggingface.loader.HuggingFaceModelLoader",
             return_value=self.mock_model_loader,
         )
         self.patcher_model_loader.start()
@@ -253,7 +253,7 @@ class VllmFileAnnotatorTests(unittest.TestCase):
 
         # Patch the HuggingFaceModelLoader to return the mocked model loader
         self.patcher_model_loader = patch(
-            "annomatic.llm.vllm.model.VllmModelLoader",
+            "annomatic.llm.vllm.loader.VllmModelLoader",
             return_value=self.mock_model_loader,
         )
         self.patcher_model_loader.start()

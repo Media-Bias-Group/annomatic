@@ -28,7 +28,7 @@ class YourTestClass(unittest.TestCase):
 
         # Patch the HuggingFaceModelLoader to return the mocked model loader
         self.patcher_model_loader = patch(
-            "annomatic.llm.huggingface.model.HuggingFaceModelLoader",
+            "annomatic.llm.huggingface.loader.HuggingFaceModelLoader",
             return_value=self.mock_model_loader,
         )
         self.patcher_model_loader.start()

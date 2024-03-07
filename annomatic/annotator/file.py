@@ -8,9 +8,9 @@ from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 from annomatic.io.base import BaseOutput
 from annomatic.io.file import create_input_handler, create_output_handler
 from annomatic.llm.base import ModelLoader
-from annomatic.llm.huggingface.model import HuggingFaceModelLoader
-from annomatic.llm.openai.model import OpenAiModelLoader
-from annomatic.llm.vllm.model import VllmModelLoader
+from annomatic.llm.huggingface.loader import HuggingFaceModelLoader
+from annomatic.llm.openai.loader import OpenAiModelLoader
+from annomatic.llm.vllm.loader import VllmModelLoader
 from annomatic.prompt import Prompt
 
 
