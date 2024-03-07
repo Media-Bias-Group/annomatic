@@ -12,7 +12,7 @@ from annomatic.prompt import Prompt
 LOGGER = logging.getLogger(__name__)
 
 
-class BaseAnnotator(ABC):
+class BaseAnnotator(FewShotMixin, ABC):
     """
     Base class for annotator classes
     """
@@ -35,9 +35,9 @@ class BaseAnnotator(ABC):
         self._model: Optional[Model] = None
         self._prompt: Optional[Prompt] = None
         self.post_processor = post_processor
-
         self.model_loader = model_loader
         self.annotation_process = annotation_process
+
 
         # TODO make lazy loading possible
         self._model = self.model_loader.load_model()
