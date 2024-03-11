@@ -1,8 +1,11 @@
 import logging
-from typing import Any, List, Optional
+from abc import ABC
+from typing import Any, Dict, List, Optional
 
+from annomatic.config.base import OpenAiConfig
 from annomatic.llm.base import (
     Model,
+    ModelLoader,
     ModelPredictionError,
     Response,
     ResponseList,
@@ -165,7 +168,7 @@ class OpenAiModel(Model):
             model=self.model_name,
             prompt=prompt,
             **self.generation_args,
-            request_timeout=10,
+            request_timeout=200,
         )
 
     def _call_chat_completions_api(self, messages: List[str]):
@@ -194,7 +197,7 @@ class OpenAiModel(Model):
             model=self.model_name,
             messages=messages,
             **self.generation_args,
-            request_timeout=10,
+            request_timeout=200,
         )
 
     def build_chat_messages(self, prompts: List[str]):

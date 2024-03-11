@@ -1,8 +1,9 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+from annomatic.config.base import VllmConfig
 from annomatic.llm import ResponseList
-from annomatic.llm.base import Model
+from annomatic.llm.base import Model, ModelLoader
 
 LOGGER = logging.getLogger(__name__)
 

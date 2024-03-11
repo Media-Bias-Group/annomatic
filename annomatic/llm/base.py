@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+
+from annomatic.config.base import ModelConfig
 
 
 class Response:
@@ -100,6 +102,49 @@ class Model(ABC):
         Predict the given messages. Message can be of type str or List[str]
         # TODO introduce List[List[str]] for multiple conversations
         """
+
+
+class ModelLoader(ABC):
+    """
+    Interface for model loaders.
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        config: ModelConfig,
+        system_prompt: Optional[str] = None,
+        lib_args: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
+        self.model_name = model_name
+        self.config = config
+        self.system_prompt = system_prompt
+        self.lib_args = lib_args or {}
+        self._model: Optional[Model] = None
+
+    @abstractmethod
+    def load_model(self) -> Model:
+        """
+        Loads the model and store it in self.model.
+
+        Returns:
+            The loaded model.
+        """
+        raise NotImplementedError()
+
+    def update_config_generation_args(
+        self,
+        generation_args: Optional[Dict[str, Any]] = None,
+    ):
+        for key, value in (generation_args or {}).items():
+            if (
+                hasattr(self.config, key)
+                and getattr(self.config, key) != value
+            ):
+                setattr(self.config, key, value)
+            else:
+                self.config.kwargs[key] = value
 
 
 class ModelPredictionError(Exception):

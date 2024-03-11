@@ -2,8 +2,9 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
+from annomatic.config.base import HuggingFaceConfig
 from annomatic.llm import ResponseList
-from annomatic.llm.base import Model
+from annomatic.llm.base import Model, ModelLoader
 from annomatic.llm.util import build_message
 
 try:

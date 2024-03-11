@@ -1,21 +1,17 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 import pandas as pd
 
-from annomatic.annotator.base import (
-    LOGGER,
-    BaseAnnotator,
-    HuggingFaceAnnotator,
-    OpenAiAnnotator,
-    VllmAnnotator,
-)
-from annomatic.config.base import (
-    HuggingFaceConfig,
-    ModelConfig,
-    OpenAiConfig,
-    VllmConfig,
-)
+from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
+from annomatic.annotator.base import LOGGER, BaseAnnotator
+from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 from annomatic.io.base import BaseOutput
+from annomatic.io.file import create_input_handler, create_output_handler
+from annomatic.llm.base import ModelLoader
+from annomatic.llm.huggingface.loader import HuggingFaceModelLoader
+from annomatic.llm.openai.loader import OpenAiModelLoader
+from annomatic.llm.vllm.loader import VllmModelLoader
+from annomatic.prompt import Prompt
 
 
 class FileAnnotator(BaseAnnotator):
@@ -26,6 +22,7 @@ class FileAnnotator(BaseAnnotator):
         batch_size (int): Size of the batch.
         labels (List[str]): List of labels that should be used
                             for soft parsing.
+        output_handler (BaseOutput): Output handler for the annotated data.
         out_path (str): Path to the output file.
         out_format (str): Format of the output file. Supported formats are
             'csv' and 'parquet'. Defaults to 'csv'.
@@ -34,64 +31,50 @@ class FileAnnotator(BaseAnnotator):
 
     def __init__(
         self,
-        batch_size: Optional[int] = None,
+        model_loader: ModelLoader,
+        annotation_process: AnnotationProcess = DefaultAnnotation(),
+        output_handler: Optional[BaseOutput] = None,
+        out_path: Optional[str] = None,
+        out_format: Optional[str] = None,
         labels: Optional[List[str]] = None,
-        out_path: str = "",
-        out_format: str = "csv",
         **kwargs,
     ):
         super().__init__(
-            batch_size=batch_size,
+            model_loader=model_loader,
+            annotation_process=annotation_process,
+            batch_size=0,  # TODO refactor
             labels=labels,
             **kwargs,
         )
 
-        self.out_path = out_path
-        self._output_handler: Optional[BaseOutput] = None
-        # Select output format
-        self._initialize_output_handler(
-            out_path=out_path,
-            out_format=out_format,
-        )
-
-    def _initialize_output_handler(
-        self,
-        out_path: str,
-        out_format: str,
-    ) -> Optional[BaseOutput]:
-        if out_format == "csv":
-            from annomatic.io.file import CsvOutput
-
-            self._output_handler = CsvOutput(
-                out_path,
+        if output_handler:
+            self._output_handler = output_handler
+        elif out_path and out_format:
+            self._output_handler = create_output_handler(
+                path=out_path,
+                type=out_format,
             )
-            return self._output_handler
-
-        elif out_format == "parquet":
-            from annomatic.io.file import ParquetOutput
-
-            self._output_handler = ParquetOutput(
-                out_path,
+        else:
+            raise ValueError(
+                "Must provide either an output_handler "
+                "or both out_path and out_format.",
             )
-            return self._output_handler
-        else:
-            raise ValueError(f"Unsupported output format: {out_format}")
 
-    def _read_input(
+    def set_context(
         self,
-        in_path: str,
-        in_format: str,
-    ) -> pd.DataFrame:
-        if in_format == "csv":
-            from annomatic.io.file import CsvInput
+        context: Union[pd.DataFrame, str],
+        prompt: Union[str, Prompt, None] = None,
+    ):
+        """
+        Sets the context for context-based annotations.
+        """
+        if self.annotation_process is None:
+            raise ValueError("Annotation process is not set!")
 
-            return CsvInput(in_path).read(sep=",")
-        elif in_format == "parquet":
-            from annomatic.io.file import ParquetInput
+        if isinstance(prompt, str):
+            prompt = Prompt(content=prompt)
 
-            return ParquetInput(in_path).read(sep=",")
-        else:
-            raise ValueError(f"Unsupported input format: {in_format}")
+        self.annotation_process.set_context(context, prompt or self._prompt)
 
     def set_data(
         self,
@@ -125,20 +108,10 @@ class FileAnnotator(BaseAnnotator):
         if isinstance(data, pd.DataFrame):
             self.data = data
         elif isinstance(data, str):
-            self.data = self._read_input(
-                in_path=data,
-                in_format=in_format,
-            )
-            if in_format == "csv":
-                from annomatic.io.file import CsvInput
-
-                self.data = CsvInput(data).read(sep=sep)
-            elif in_format == "parquet":
-                from annomatic.io.file import ParquetInput
-
-                self.data = ParquetInput(data).read(sep=sep)
-            else:
-                raise ValueError(f"Unsupported input format: {in_format}")
+            self.data = create_input_handler(
+                path=data,
+                type=in_format,
+            ).read(sep=sep)
         else:
             raise ValueError(
                 "Invalid input type! "
@@ -163,6 +136,17 @@ class FileAnnotator(BaseAnnotator):
             return_df: bool whether to return the annotated data as a DataFrame
             kwargs: a dict containing the input variables for templates
         """
+
+        # check that all required components are set
+        if self.annotation_process is None:
+            raise ValueError("Annotation process is not set!")
+
+        if self.post_processor is None:
+            raise ValueError("Post processor is not set!")
+
+        if self._output_handler is None:
+            raise ValueError("Output handler is not set!")
+
         if data is not None:
             self.set_data(
                 data=data,
@@ -174,33 +158,38 @@ class FileAnnotator(BaseAnnotator):
 
         self._validate_labels(**kwargs)
 
-        annotated_data = self._annotate(**kwargs)
+        if self._labels is not None:
+            self.post_processor.labels = self._labels
+            self.annotation_process.labels = self._labels
+
+        if (
+            self._model is None
+            or self._prompt is None
+            or self.data_variable is None
+        ):
+            raise ValueError(
+                "Model, prompt or data variable is not set! ",
+            )
+
+        annotated_data = self.annotation_process.annotate(
+            model=self._model,
+            prompt=self._prompt,
+            data=self.data,
+            data_variable=self.data_variable,
+            batch_size=self.batch_size,
+            **kwargs,
+        )
+
+        self.post_processor.process(df=annotated_data)
+        self._output_handler.write(annotated_data)
 
         if return_df:
             return annotated_data
         else:
             return None
 
-    def get_num_samples(self):
-        """
-        Returns the number of data instances to be annotated.
-        """
-        return self.data.shape[0]
 
-    def store_annotated_data(self, output_data: pd.DataFrame):
-        """
-        Write the output data to the output CSV file.
-
-        Args:
-            output_data: List[dict] representing the output data.
-        """
-        if self._output_handler is None:
-            raise ValueError("Output handler is not set!")
-
-        self._output_handler.write(output_data)
-
-
-class OpenAiFileAnnotator(OpenAiAnnotator, FileAnnotator):
+class OpenAiFileAnnotator(FileAnnotator):
     """
     Annotator class for OpenAI models that use file inputs and outputs.
 
@@ -220,7 +209,8 @@ class OpenAiFileAnnotator(OpenAiAnnotator, FileAnnotator):
 
     def __init__(
         self,
-        model_name: str,
+        model_loader: Optional[OpenAiModelLoader] = None,
+        model_name: Optional[str] = None,
         config: Optional[OpenAiConfig] = None,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
@@ -230,69 +220,31 @@ class OpenAiFileAnnotator(OpenAiAnnotator, FileAnnotator):
         api_key: str = "",
         **kwargs,
     ):
+        if model_loader is None:
+            if model_name is None:
+                raise ValueError(
+                    "Model loader or model name must be provided!",
+                )
+            model_loader = OpenAiModelLoader(
+                model_name=model_name,
+                config=config,
+                batch_size=batch_size,
+                labels=labels,
+                system_prompt=system_prompt,
+                api_key=api_key,
+                **kwargs,
+            )
+
         super().__init__(
-            model_name=model_name,
-            config=config,
-            batch_size=batch_size,
+            model_loader=model_loader,
             labels=labels,
-            system_prompt=system_prompt,
             out_path=out_path,
             out_format=out_format,
-            api_key=api_key,
             **kwargs,
         )
 
 
-class HuggingFaceFileAnnotator(HuggingFaceAnnotator, FileAnnotator):
-    """
-    Annotator class for HuggingFace models that work with file inputs
-    and outputs.
-
-    This class can use LLMs loaded by the AutoModelForCausalLM and
-    AutoModelForSeq2SeqLM classes.
-
-    Arguments:
-        model_name (str): Name of the model.
-        config (Optional[HuggingFaceConfig]): Configuration for the model.
-        batch_size (Optional[int]): Size of the batch.
-        labels (Optional[List[str]]): List of labels that should be used
-                                        for soft parsing.
-        system_prompt (Optional[str]): System prompt for the model.
-        out_path (str): Path to the output file.
-        out_format (str): Format of the output file.
-        auto_model (str): Name of the AutoModel class to be used.
-        use_chat_template (bool): Whether to use the chat template.
-        kwargs: a dict containing additional arguments
-    """
-
-    def __init__(
-        self,
-        model_name: str,
-        config: Optional[HuggingFaceConfig] = None,
-        batch_size: Optional[int] = None,
-        labels: Optional[List[str]] = None,
-        system_prompt: Optional[str] = None,
-        out_path: str = "",
-        out_format: str = "csv",
-        auto_model: str = "AutoModelForCausalLM",
-        use_chat_template: bool = False,
-        **kwargs,
-    ):
-        super().__init__(
-            model_name=model_name,
-            config=config,
-            batch_size=batch_size,
-            labels=labels,
-            system_prompt=system_prompt,
-            out_path=out_path,
-            out_format=out_format,
-            auto_model=auto_model,
-            use_chat_template=use_chat_template,
-            **kwargs,
-        )
-
-
-class VllmFileAnnotator(VllmAnnotator, FileAnnotator):
+class VllmFileAnnotator(FileAnnotator):
     """
     Annotator class for Vllm models that use file inputs and outputs.
 
@@ -311,7 +263,8 @@ class VllmFileAnnotator(VllmAnnotator, FileAnnotator):
 
     def __init__(
         self,
-        model_name: str,
+        model_loader: Optional[VllmModelLoader] = None,
+        model_name: Optional[str] = None,
         config: Optional[VllmConfig] = None,
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
@@ -320,13 +273,87 @@ class VllmFileAnnotator(VllmAnnotator, FileAnnotator):
         out_format: str = "csv",
         **kwargs,
     ):
+        if model_loader is None:
+            if model_name is None:
+                raise ValueError(
+                    "Model loader or model name must be provided!",
+                )
+            model_loader = VllmModelLoader(
+                model_name=model_name,
+                config=config,
+                batch_size=batch_size,
+                labels=labels,
+                system_prompt=system_prompt,
+                **kwargs,
+            )
+
         super().__init__(
-            model_name=model_name,
-            config=config,
-            batch_size=batch_size,
+            model_loader=model_loader,
             labels=labels,
-            system_prompt=system_prompt,
             out_path=out_path,
             out_format=out_format,
+            **kwargs,
+        )
+
+
+class HuggingFaceFileAnnotator(FileAnnotator):
+    """
+    Annotator class for HuggingFace models that work with file inputs
+    and outputs.
+
+    This class can use LLMs loaded by the AutoModelForCausalLM and
+    AutoModelForSeq2SeqLM classes.
+
+    Arguments:
+        model_loader (Optional[HuggingFaceModelLoader]): Model loader for the
+                                                        HuggingFace model.
+        model_name (Optional[str]): Name of the model.
+        config (Optional[HuggingFaceConfig]): Configuration for the model.
+        batch_size (Optional[int]): Size of the batch.
+        labels (Optional[List[str]]): List of labels that should be used
+                                        for soft parsing.
+        system_prompt (Optional[str]): System prompt for the model.
+        out_path (str): Path to the output file.
+        out_format (str): Format of the output file.
+        auto_model (str): Name of the AutoModel class to be used.
+        use_chat_template (bool): Whether to use the chat template.
+        kwargs: a dict containing additional arguments
+    """
+
+    def __init__(
+        self,
+        model_loader: Optional[HuggingFaceModelLoader] = None,
+        model_name: Optional[str] = None,
+        config: Optional[HuggingFaceConfig] = None,
+        batch_size: Optional[int] = None,
+        labels: Optional[List[str]] = None,
+        system_prompt: Optional[str] = None,
+        out_path: str = "",
+        out_format: str = "csv",
+        auto_model: str = "AutoModelForCausalLM",
+        use_chat_template: bool = False,
+        **kwargs,
+    ):
+        if model_loader is None:
+            if model_name is None:
+                raise ValueError(
+                    "Model loader or model name must be provided!",
+                )
+            model_loader = HuggingFaceModelLoader(
+                model_name=model_name,
+                config=config,
+                batch_size=batch_size,
+                labels=labels,
+                system_prompt=system_prompt,
+                auto_model=auto_model,
+                use_chat_template=use_chat_template,
+                **kwargs,
+            )
+
+        super().__init__(
+            model_loader=model_loader,
+            out_path=out_path,
+            out_format=out_format,
+            labels=labels,
             **kwargs,
         )
