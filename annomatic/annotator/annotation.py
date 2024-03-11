@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 from tqdm import tqdm
 
-from annomatic.llm.base import Model
 from annomatic.prompt import Prompt
 from annomatic.retriever.base import Retriever
 
@@ -26,7 +25,7 @@ class AnnotationProcess(ABC):
     @abstractmethod
     def annotate(
         self,
-        model: Model,
+        model,
         prompt: Prompt,
         data: pd.DataFrame,
         data_variable: str,
@@ -174,7 +173,7 @@ class DefaultAnnotation(AnnotationProcess):
 
     def annotate(
         self,
-        model: Model,
+        model,
         prompt: Prompt,
         data: pd.DataFrame,
         data_variable: str,
@@ -220,7 +219,7 @@ class DefaultAnnotation(AnnotationProcess):
 
     def _annotate_batch(
         self,
-        model: Model,
+        model,
         prompt: Prompt,
         batch: pd.DataFrame,
         data_variable: str,
@@ -253,16 +252,17 @@ class DefaultAnnotation(AnnotationProcess):
                 data_variable=data_variable,
                 **kwargs,
             )
-            responses = model.predict(messages=messages)
+
+            responses = model.run(messages)["replies"]
 
             annotated_data = []
             for idx, response in enumerate(responses):
                 annotated_data.append(
                     {
                         data_variable: batch.iloc[idx][str(data_variable)],
-                        "response": response.answer,
-                        "raw_data": response.data,
-                        "query": response.query,
+                        "response": response,
+                        "raw_data": response,
+                        "query": messages[idx],
                     },
                 )
             return annotated_data

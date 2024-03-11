@@ -7,7 +7,6 @@ from annomatic.annotator.base import LOGGER, BaseAnnotator
 from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 from annomatic.io.base import BaseOutput
 from annomatic.io.file import create_input_handler, create_output_handler
-from annomatic.llm.base import ModelLoader
 from annomatic.llm.huggingface.loader import HuggingFaceModelLoader
 from annomatic.llm.openai.loader import OpenAiModelLoader
 from annomatic.llm.vllm.loader import VllmModelLoader
@@ -31,7 +30,7 @@ class FileAnnotator(BaseAnnotator):
 
     def __init__(
         self,
-        model_loader: ModelLoader,
+        model,
         annotation_process: AnnotationProcess = DefaultAnnotation(),
         output_handler: Optional[BaseOutput] = None,
         out_path: Optional[str] = None,
@@ -40,7 +39,7 @@ class FileAnnotator(BaseAnnotator):
         **kwargs,
     ):
         super().__init__(
-            model_loader=model_loader,
+            model=model,
             annotation_process=annotation_process,
             batch_size=0,  # TODO refactor
             labels=labels,

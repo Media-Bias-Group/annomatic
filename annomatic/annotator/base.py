@@ -6,7 +6,6 @@ import pandas as pd
 
 from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
-from annomatic.llm.base import Model, ModelLoader
 from annomatic.prompt import Prompt
 
 LOGGER = logging.getLogger(__name__)
@@ -19,7 +18,7 @@ class BaseAnnotator(ABC):
 
     def __init__(
         self,
-        model_loader: ModelLoader,
+        model,
         annotation_process: AnnotationProcess = DefaultAnnotation(),
         batch_size: Optional[int] = None,
         labels: Optional[List[str]] = None,
@@ -32,14 +31,10 @@ class BaseAnnotator(ABC):
         self.kwargs = kwargs
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
-        self._model: Optional[Model] = None
         self._prompt: Optional[Prompt] = None
         self.post_processor = post_processor
-        self.model_loader = model_loader
         self.annotation_process = annotation_process
-
-        # TODO make lazy loading possible
-        self._model = self.model_loader.load_model()
+        self._model = model
 
     @abstractmethod
     def annotate(
