@@ -36,12 +36,13 @@ class FileAnnotator(BaseAnnotator):
         out_path: Optional[str] = None,
         out_format: Optional[str] = None,
         labels: Optional[List[str]] = None,
+        batch_size: int = 1,  # default to 1 for non-batch models
         **kwargs,
     ):
         super().__init__(
             model=model,
             annotation_process=annotation_process,
-            batch_size=0,  # TODO refactor
+            batch_size=batch_size,
             labels=labels,
             **kwargs,
         )
@@ -169,6 +170,9 @@ class FileAnnotator(BaseAnnotator):
             raise ValueError(
                 "Model, prompt or data variable is not set! ",
             )
+
+        if hasattr(self._model, "pipeline") and self._model.pipeline is None:
+            self._model.warm_up()
 
         annotated_data = self.annotation_process.annotate(
             model=self._model,

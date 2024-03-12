@@ -20,7 +20,7 @@ class BaseAnnotator(ABC):
         self,
         model,
         annotation_process: AnnotationProcess = DefaultAnnotation(),
-        batch_size: Optional[int] = None,
+        batch_size: int = 1,
         labels: Optional[List[str]] = None,
         post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         **kwargs,

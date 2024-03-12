@@ -29,6 +29,7 @@ class AnnotationProcess(ABC):
         prompt: Prompt,
         data: pd.DataFrame,
         data_variable: str,
+        batch_size: int,
         **kwargs,
     ) -> pd.DataFrame:
         """
@@ -39,6 +40,7 @@ class AnnotationProcess(ABC):
             prompt: the prompt used for annotation
             data: the input data
             data_variable: the variable in the input data
+            batch_size: the batch size for the annotation process
             kwargs: a dict containing the input variables for templates
         """
         raise NotImplementedError()
@@ -74,11 +76,9 @@ class DefaultAnnotation(AnnotationProcess):
     def __init__(
         self,
         labels: Optional[List[str]] = None,
-        batch_size: Optional[int] = None,
     ):
         super().__init__(labels=labels)
         self.context: Union[Retriever, pd.DataFrame, None] = None
-        self.batch_size = batch_size
 
     def set_context(
         self,
@@ -155,7 +155,7 @@ class DefaultAnnotation(AnnotationProcess):
 
         return message
 
-    def _num_batches(self, total_rows: int):
+    def _num_batches(self, total_rows: int, batch_size: int) -> int:
         """
         Calculates the number of batches.
 
@@ -164,12 +164,11 @@ class DefaultAnnotation(AnnotationProcess):
         Args:
             total_rows: int representing the total number of rows.
         """
-        if self.batch_size:
-            return total_rows // self.batch_size
+        if batch_size:
+            return total_rows // batch_size
         else:
-            # if no batch size is set, use the whole dataset as a batch
-            self.batch_size = total_rows
-            return 1
+            # if no batch size is set, don't use batches
+            return total_rows
 
     def annotate(
         self,
@@ -177,6 +176,7 @@ class DefaultAnnotation(AnnotationProcess):
         prompt: Prompt,
         data: pd.DataFrame,
         data_variable: str,
+        batch_size: int,
         **kwargs,
     ) -> pd.DataFrame:
         if data is None:
@@ -185,13 +185,11 @@ class DefaultAnnotation(AnnotationProcess):
         output_data = []
 
         total_rows = data.shape[0]
-        num_batches = self._num_batches(total_rows)
+        num_batches = self._num_batches(total_rows, batch_size)
 
         LOGGER.info(f"Starting Annotation of {total_rows}")
         for idx in tqdm(range(num_batches)):
-            batch = data.iloc[
-                idx * self.batch_size : (idx + 1) * self.batch_size
-            ]
+            batch = data.iloc[idx * batch_size : (idx + 1) * batch_size]
             entries = self._annotate_batch(
                 model=model,
                 prompt=prompt,
@@ -203,8 +201,8 @@ class DefaultAnnotation(AnnotationProcess):
                 output_data.extend(entries)
 
         # handle rest of the data
-        if num_batches * self.batch_size < total_rows:
-            batch = data.iloc[num_batches * self.batch_size :]
+        if num_batches * batch_size < total_rows:
+            batch = data.iloc[num_batches * batch_size :]
             entries = self._annotate_batch(batch, **kwargs)
             if entries:
                 output_data.extend(entries)
@@ -253,23 +251,36 @@ class DefaultAnnotation(AnnotationProcess):
                 **kwargs,
             )
 
-            responses = model.run(messages)["replies"]
+            responses = model.run(messages)
 
-            annotated_data = []
-            for idx, response in enumerate(responses):
-                annotated_data.append(
-                    {
-                        data_variable: batch.iloc[idx][str(data_variable)],
-                        "response": response,
-                        "raw_data": response,
-                        "query": messages[idx],
-                    },
-                )
-            return annotated_data
+            return self.to_format(batch, messages, responses, data_variable)
 
         except Exception as exception:
             LOGGER.error(f"Prediction error: {str(exception)}")
             return []
+
+    def to_format(
+        self,
+        batch,
+        messages,
+        responses: Dict,
+        data_variable,
+    ) -> list[Dict]:
+        annotated_data = []
+
+        for i in range((len(responses["replies"]))):
+            response = responses["replies"][i]
+            raw_data = responses.get("meta", responses.get("replies"))[i]
+            message = messages[i] if isinstance(messages, list) else messages
+
+            parsed_response = {
+                data_variable: batch.iloc[i][data_variable],
+                "response": response,
+                "raw_data": raw_data,
+                "query": message,
+            }
+            annotated_data.append(parsed_response)
+        return annotated_data
 
     def fill_prompt(
         self,
@@ -277,7 +288,7 @@ class DefaultAnnotation(AnnotationProcess):
         batch: pd.DataFrame,
         data_variable: str,
         **kwargs,
-    ) -> List[str]:
+    ) -> Union[List[str], str]:
         """
         Creates the prompt passed to the model.
 
@@ -307,4 +318,4 @@ class DefaultAnnotation(AnnotationProcess):
             kwargs[str(data_variable)] = row[str(data_variable)]
             messages.append(icl_part + prompt(**kwargs))
 
-        return messages
+        return messages[0] if len(messages) == 1 else messages
