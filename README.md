@@ -36,24 +36,27 @@ To get started with Annomatic, follow these installation steps:
 
 2. Install dependencies
 
-   The installation depends on what Language Models you choose:
+   To install the required dependencies, run the following command:
 
-    1. OpenAI
-    ```bash
-    poetry install --with openai
-    ```
+   ```bash
+   poetry install
+   ```
+   or
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-    2. HuggingFace
+   Annomatic relies on Haystack 2.0 for its core functionality. Therefore,
+   certain models rely on extra dependencies. The following optional
+    dependencies are required for the following models:
+
+    1. HuggingFace
     ```bash
     poetry install --with huggingface
     ```
-   additional to this be sure that you have installed the right version of
-   pytorch.
 
-    2. vLLM
-    ```bash
-    poetry install --with vllm
-    ```
+A list for all available LLMs can be found in the [Haystack docs](https://docs.haystack.deepset.ai/docs/generators)
+with additional installation information.
 
 ## Usage
    You can find examples of how to use Annomatic in the [Examples](examples)

@@ -9,32 +9,19 @@ readme = "README.md"
 python = ">=3.9,<3.11"
 pandas = "^2.1.1"
 tqdm = "~4.64.1"
+haystack-ai = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.2"
 pre-commit = "^3.4.0"
 
-# OpenAi
-[tool.poetry.group.openai]
-optional = true
-
-[tool.poetry.group.openai.dependencies]
-openai = "^0.28.1"
-tenacity = "^8.2.3"
-
-# HugginFace
+# HuggingFace
 [tool.poetry.group.huggingface]
 optional = true
 
 [tool.poetry.group.huggingface.dependencies]
 transformers = "^4.34.0"
 
-# Vllm
-[tool.poetry.group.vllm]
-optional = true
-
-[tool.poetry.group.vllm.dependencies]
-vllm = "^0.2.1.post1"
 
 # Retriever (for ICL)
 [tool.poetry.group.retriever]
