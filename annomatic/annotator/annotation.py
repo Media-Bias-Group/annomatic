@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from tqdm import tqdm
@@ -155,20 +155,26 @@ class DefaultAnnotation(AnnotationProcess):
 
         return message
 
-    def _num_batches(self, total_rows: int, batch_size: int) -> int:
+    def _num_batches(
+        self,
+        total_rows: int,
+        batch_size: int,
+    ) -> Tuple[int, int]:
         """
-        Calculates the number of batches.
+        Calculates the number of batches and the batch size.
 
         If self.batch_size is not set, the whole dataset is used as a batch.
 
         Args:
             total_rows: int representing the total number of rows.
         """
-        if batch_size:
-            return total_rows // batch_size
-        else:
-            # if no batch size is set, don't use batches
-            return total_rows
+        if not batch_size:
+            return total_rows, 1
+
+        if total_rows < batch_size:
+            return 1, total_rows
+
+        return total_rows // batch_size, batch_size
 
     def annotate(
         self,
@@ -185,7 +191,7 @@ class DefaultAnnotation(AnnotationProcess):
         output_data = []
 
         total_rows = data.shape[0]
-        num_batches = self._num_batches(total_rows, batch_size)
+        num_batches, batch_size = self._num_batches(total_rows, batch_size)
 
         LOGGER.info(f"Starting Annotation of {total_rows}")
         for idx in tqdm(range(num_batches)):
