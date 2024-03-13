@@ -1,7 +1,7 @@
 import pandas as pd
+from haystack.components.generators import HuggingFaceLocalGenerator
 
-from annomatic.annotator import HuggingFaceFileAnnotator
-from annomatic.config.base import HuggingFaceConfig
+from annomatic.annotator import FileAnnotator
 from annomatic.config.factory import ConfigFactory
 from annomatic.prompt import Prompt
 
@@ -18,19 +18,18 @@ prompt.add_part("Instruction: '{text}'")
 prompt.add_labels_part("Classify the sentence above as {label}.")
 prompt.add_part("Output: ")
 
-# define HuggingFace config with
-config = ConfigFactory.create(
-    "huggingface",
-    pad_token_id=50256,
+# create model via Haystack 2.0
+model = HuggingFaceLocalGenerator(
+    task="text2text-generation",
+    generation_kwargs={"max_new_tokens": 100, "temperature": 0.9},
 )
-config.tokenizer_args["pad_token_id"] = 50256
-config.tokenizer_args["padding_side"] = "left"
 
-# create HuggingFace annotator and set data and prompt
-annotator = HuggingFaceFileAnnotator(
-    model_name="EleutherAI/gpt-neo-1.3B",
-    config=config,
+# create annotator
+annotator = FileAnnotator(
+    model=model,
     out_path="./output.csv",
+    out_format="csv",
+    batch_size=2,
 )
 
 annotator.set_data(df, data_variable="text")
