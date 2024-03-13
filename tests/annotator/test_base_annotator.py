@@ -6,7 +6,6 @@ import pytest
 
 from annomatic.annotator import FileAnnotator
 from annomatic.annotator.annotation import DefaultAnnotation
-from annomatic.llm import Response, ResponseList
 from annomatic.prompt import Prompt
 from annomatic.retriever import DiversityRetriever
 

@@ -4,14 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from annomatic.annotator import (
-    FileAnnotator,
-    HuggingFaceFileAnnotator,
-    OpenAiFileAnnotator,
-    VllmFileAnnotator,
-)
+from annomatic.annotator import FileAnnotator
 from annomatic.annotator.annotation import DefaultAnnotation
-from annomatic.llm import Response, ResponseList
 from annomatic.prompt.prompt import Prompt
 
 
