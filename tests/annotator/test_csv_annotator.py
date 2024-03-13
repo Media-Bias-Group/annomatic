@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 
 from annomatic.annotator import (
+    FileAnnotator,
     HuggingFaceFileAnnotator,
     OpenAiFileAnnotator,
     VllmFileAnnotator,
@@ -15,32 +16,31 @@ from annomatic.prompt.prompt import Prompt
 
 
 class OpenAiFileAnnotatorTests(unittest.TestCase):
-    def setUp(self):
+    def test_OpenAiAnnotation_annotate(self):
+        mock_result = {
+            "replies": ["NOT BIASED"],
+            "meta": [
+                {
+                    "model": "gpt-3.5-turbo-0125",
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "usage": {
+                        "completion_tokens": 4,
+                        "prompt_tokens": 38,
+                        "total_tokens": 42,
+                    },
+                },
+            ],
+        }
+
         # Mock the model's predict method
         self.mock_model_predict = MagicMock(
-            return_value=ResponseList.from_responses(
-                [Response(answer="answer", data="data", query="query")],
-            ),
+            return_value=mock_result,
         )
 
-        # Mock the model and assign the predict method
         self.mock_model = MagicMock()
-        self.mock_model.predict = self.mock_model_predict
+        self.mock_model.run = self.mock_model_predict
 
-        self.mock_model_loader = MagicMock()
-        self.mock_model_loader.load_model.return_value = self.mock_model
-
-        # Patch the HuggingFaceModelLoader to return the mocked model loader
-        self.patcher_model_loader = patch(
-            "annomatic.llm.openai.loader.OpenAiModelLoader",
-            return_value=self.mock_model_loader,
-        )
-        self.patcher_model_loader.start()
-
-    def tearDown(self):
-        self.patcher_model_loader.stop()
-
-    def test_OpenAiAnnotation_annotate(self):
         # delete file if exists
         try:
             os.remove(
@@ -49,12 +49,12 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
         except OSError:
             pass
 
-        annotator = OpenAiFileAnnotator(
-            model_name="model",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
-            annotation_process=DefaultAnnotation(batch_size=1),
-            labels=["PERSUASIVE TECHNIQUES", "NO PERSUASIVE TECHNIQUES"],
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
         data = pd.read_csv(
             "./tests/data/input.csv",
@@ -75,7 +75,9 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
             data_variable="input",
         )
 
-        annotator.annotate()
+        res = annotator.annotate(return_df=True)
+
+        assert len(res) == data.shape[0]
 
         assert os.path.exists(
             "./tests/data/output.csv",
@@ -87,71 +89,36 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
         assert output.shape[0] == data.shape[0]
 
     def test_openai_annotate_batch(self):
-        # delete file if exists
-        try:
-            os.remove(
-                "./tests/data/output.csv",
-            )
-        except OSError:
-            pass
-        inp = pd.read_csv(
-            "./tests/data/input.csv",
-        )
+        mock_result = {
+            "replies": [
+                "NOT BIASED",
+                "BIASED",
+                "NOT BIASED",
+                "BIASED",
+                "NOT BIASED",
+            ],
+            "meta": [
+                {
+                    "model": "gpt-3.5-turbo-0125",
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "usage": {
+                        "completion_tokens": 0,
+                        "prompt_tokens": 0,
+                        "total_tokens": 0,
+                    },
+                },
+            ],
+        }
 
-        annotator = OpenAiFileAnnotator(
-            model_name="model",
-            out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
-            annotation_process=DefaultAnnotation(),
-        )
-
-        template = (
-            "Instruction: '{input}'"
-            "\n\n"
-            "Classify the sentence above as PERSUASIVE TECHNIQUES "
-            "or NO PERSUASIVE TECHNIQUES."
-            "\n\n"
-            "Output: "
-        )
-        annotator.set_prompt(prompt=template)
-        annotator.data_variable = "input"
-        res = annotator.annotation_process._annotate_batch(
-            model=self.mock_model,
-            batch=inp,
-            prompt=Prompt(template),
-            data_variable="input",
-        )
-
-        assert len(res) == 1
-
-
-class HuggingFaceTests(unittest.TestCase):
-    def setUp(self):
         # Mock the model's predict method
         self.mock_model_predict = MagicMock(
-            return_value=ResponseList.from_responses(
-                [Response(answer="answer", data="data", query="query")] * 5,
-            ),
+            return_value=mock_result,
         )
 
-        # Mock the model and assign the predict method
         self.mock_model = MagicMock()
-        self.mock_model.predict = self.mock_model_predict
+        self.mock_model.run = self.mock_model_predict
 
-        self.mock_model_loader = MagicMock()
-        self.mock_model_loader.load_model.return_value = self.mock_model
-
-        # Patch the HuggingFaceModelLoader to return the mocked model loader
-        self.patcher_model_loader = patch(
-            "annomatic.llm.huggingface.loader.HuggingFaceModelLoader",
-            return_value=self.mock_model_loader,
-        )
-        self.patcher_model_loader.start()
-
-    def tearDown(self):
-        self.patcher_model_loader.stop()
-
-    def test_Huggingface_annotate(self):
         # delete file if exists
         try:
             os.remove(
@@ -164,63 +131,19 @@ class HuggingFaceTests(unittest.TestCase):
             "./tests/data/input.csv",
         )
 
-        annotator = HuggingFaceFileAnnotator(
-            model_name="model",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            labels=["PERSUASIVE TECHNIQUES", "NO PERSUASIVE TECHNIQUES"],
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
             annotation_process=DefaultAnnotation(),
         )
-        annotator.batch_size = 5
 
         template = (
             "Instruction: '{input}'"
             "\n\n"
-            "Classify the sentence above as PERSUASIVE TECHNIQUES "
-            "or NO PERSUASIVE TECHNIQUES."
-            "\n\n"
-            "Output: "
-        )
-        annotator.set_prompt(prompt=template)
-        annotator.set_data(
-            data=data,
-            data_variable="input",
-        )
-
-        annotator.annotate()
-        assert os.path.exists(
-            "./tests/data/output.csv",
-        )
-
-        output = pd.read_csv(
-            "./tests/data/output.csv",
-        )
-        assert output.shape[0] == data.shape[0]
-
-    def test_huggingface_annotate_batch(self):
-        # delete file if exists
-        try:
-            os.remove(
-                "./tests/data/output.csv",
-            )
-        except OSError:
-            pass
-
-        inp = pd.read_csv(
-            "./tests/data/input.csv",
-        )
-
-        annotator = HuggingFaceFileAnnotator(
-            model_name="model",
-            out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
-            annotation_process=DefaultAnnotation(),
-        )
-        template = (
-            "Instruction: '{input}'"
-            "\n\n"
-            "Classify the sentence above as PERSUASIVE TECHNIQUES "
-            "or NO PERSUASIVE TECHNIQUES."
+            "Classify the sentence above as BIASED "
+            "or NO NOT BIASED."
             "\n\n"
             "Output: "
         )
@@ -228,110 +151,10 @@ class HuggingFaceTests(unittest.TestCase):
         annotator.data_variable = "input"
         res = annotator.annotation_process._annotate_batch(
             model=self.mock_model,
-            batch=inp,
+            batch=data,
             prompt=Prompt(template),
             data_variable="input",
-        )
-        assert len(res) == inp.shape[0]
-
-
-class VllmFileAnnotatorTests(unittest.TestCase):
-    def setUp(self):
-        # Mock the model's predict method
-        self.mock_model_predict = MagicMock(
-            return_value=ResponseList.from_responses(
-                [Response(answer="answer", data="data", query="query")] * 5,
-            ),
+            return_df=True,
         )
 
-        # Mock the model and assign the predict method
-        self.mock_model = MagicMock()
-        self.mock_model.predict = self.mock_model_predict
-
-        self.mock_model_loader = MagicMock()
-        self.mock_model_loader.load_model.return_value = self.mock_model
-
-        # Patch the HuggingFaceModelLoader to return the mocked model loader
-        self.patcher_model_loader = patch(
-            "annomatic.llm.vllm.loader.VllmModelLoader",
-            return_value=self.mock_model_loader,
-        )
-        self.patcher_model_loader.start()
-
-    def tearDown(self):
-        self.patcher_model_loader.stop()
-
-    def test_vllm_annotate(self):
-        # delete file if exists
-        try:
-            os.remove(
-                "./tests/data/output.csv",
-            )
-        except OSError:
-            pass
-        data = pd.read_csv(
-            "./tests/data/input.csv",
-        )
-
-        annotator = VllmFileAnnotator(
-            model_name="model",
-            out_path="./tests/data/output.csv",
-            labels=["PERSUASIVE TECHNIQUES", "NO PERSUASIVE TECHNIQUES"],
-            model_loader=self.mock_model_loader,
-            annotation_process=DefaultAnnotation(),
-        )
-        template = (
-            "Instruction: '{input}'"
-            "\n\n"
-            "Classify the sentence above as PERSUASIVE TECHNIQUES "
-            "or NO PERSUASIVE TECHNIQUES."
-            "\n\n"
-            "Output: "
-        )
-        annotator.set_prompt(prompt=template)
-        annotator.annotate(data=data, in_col="input")
-        assert os.path.exists(
-            "./tests/data/output.csv",
-        )
-
-        output = pd.read_csv(
-            "./tests/data/output.csv",
-        )
-        assert output.shape[0] == data.shape[0]
-
-    def test_vllm_annotate_batch(self):
-        # delete file if exists
-        try:
-            os.remove(
-                "./tests/data/output.csv",
-            )
-        except OSError:
-            pass
-        inp = pd.read_csv(
-            "./tests/data/input.csv",
-        )
-
-        annotator = VllmFileAnnotator(
-            model_name="model",
-            out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
-            annotation_process=DefaultAnnotation(),
-        )
-        template = (
-            "Instruction: '{input}'"
-            "\n\n"
-            "Classify the sentence above as PERSUASIVE TECHNIQUES "
-            "or NO PERSUASIVE TECHNIQUES."
-            "\n\n"
-            "Output: "
-        )
-
-        annotator.set_prompt(prompt=template)
-        annotator.data_variable = "input"
-        res = annotator.annotation_process._annotate_batch(
-            model=self.mock_model,
-            batch=inp,
-            prompt=Prompt(template),
-            data_variable="input",
-        )
-        assert len(res) == inp.shape[0]
+        assert len(res) == 5

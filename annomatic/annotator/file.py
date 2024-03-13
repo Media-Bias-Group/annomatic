@@ -171,6 +171,7 @@ class FileAnnotator(BaseAnnotator):
                 "Model, prompt or data variable is not set! ",
             )
 
+        # Lazy warm-up of the model (if needed)
         if hasattr(self._model, "pipeline") and self._model.pipeline is None:
             self._model.warm_up()
 

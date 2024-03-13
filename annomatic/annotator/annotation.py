@@ -261,16 +261,16 @@ class DefaultAnnotation(AnnotationProcess):
 
     def to_format(
         self,
-        batch,
-        messages,
+        batch: pd.DataFrame,
+        messages: Union[List[str], str],
         responses: Dict,
-        data_variable,
+        data_variable: str,
     ) -> list[Dict]:
         annotated_data = []
 
         for i in range((len(responses["replies"]))):
             response = responses["replies"][i]
-            raw_data = responses.get("meta", responses.get("replies"))[i]
+            raw_data = responses.get("meta", responses["replies"][i])
             message = messages[i] if isinstance(messages, list) else messages
 
             parsed_response = {
