@@ -256,8 +256,11 @@ class DefaultAnnotation(AnnotationProcess):
                 data_variable=data_variable,
                 **kwargs,
             )
+            print("messages:", messages)
 
             responses = model.run(messages)
+
+            print("responses:", responses)
 
             return self.to_format(batch, messages, responses, data_variable)
 
@@ -285,6 +288,8 @@ class DefaultAnnotation(AnnotationProcess):
                 "raw_data": raw_data,
                 "query": message,
             }
+            print("parsed_response:", parsed_response)
+
             annotated_data.append(parsed_response)
         return annotated_data
 
