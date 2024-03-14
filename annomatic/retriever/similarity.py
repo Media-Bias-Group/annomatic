@@ -1,7 +1,6 @@
 from typing import Optional
 
 import pandas as pd
-from sentence_transformers import util
 
 from .base import Retriever
 
@@ -51,6 +50,8 @@ class SimilarityRetriever(Retriever):
         Returns:
             The k most similar responses from the given pool of messages.
         """
+        from sentence_transformers import util
+
         if query is None:
             raise ValueError("Query must not be None")
 
