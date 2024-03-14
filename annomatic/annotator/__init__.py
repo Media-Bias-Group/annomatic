@@ -1,5 +1,1 @@
-from .file import (
-    HuggingFaceFileAnnotator,
-    OpenAiFileAnnotator,
-    VllmFileAnnotator,
-)
+from .file import FileAnnotator

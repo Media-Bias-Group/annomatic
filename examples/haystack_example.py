@@ -1,8 +1,11 @@
 import pandas as pd
-from haystack.components.generators import HuggingFaceLocalGenerator
+from haystack.components.generators import (
+    HuggingFaceLocalGenerator,
+    OpenAIGenerator,
+)
+from haystack.utils import Secret
 
 from annomatic.annotator import FileAnnotator
-from annomatic.config.factory import ConfigFactory
 from annomatic.prompt import Prompt
 
 # create dataframe with textual data
@@ -18,18 +21,19 @@ prompt.add_part("Instruction: '{text}'")
 prompt.add_labels_part("Classify the sentence above as {label}.")
 prompt.add_part("Output: ")
 
-# create model via Haystack 2.0
-model = HuggingFaceLocalGenerator(
+# generator = OpenAIGenerator(
+#    api_key=Secret.from_token(
+#        token="KEY"))
+
+generator = HuggingFaceLocalGenerator(
     task="text2text-generation",
     generation_kwargs={"max_new_tokens": 100, "temperature": 0.9},
 )
 
-# create annotator
 annotator = FileAnnotator(
-    model=model,
+    model=generator,
     out_path="./output.csv",
     out_format="csv",
-    batch_size=2,
 )
 
 annotator.set_data(df, data_variable="text")

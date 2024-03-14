@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import pandas as pd
-from sentence_transformers import SentenceTransformer
 
 
 class Retriever(ABC):
@@ -28,6 +27,8 @@ class Retriever(ABC):
         seed: int = 42,
         **kwargs,
     ):
+        from sentence_transformers import SentenceTransformer
+
         self.k = k
         self.pool = pool
         self.text_variable = text_variable

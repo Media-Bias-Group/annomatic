@@ -4,48 +4,48 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from annomatic.annotator import HuggingFaceFileAnnotator
+from annomatic.annotator import FileAnnotator
 from annomatic.annotator.annotation import DefaultAnnotation
-from annomatic.llm import Response, ResponseList
 from annomatic.prompt import Prompt
 from annomatic.retriever import DiversityRetriever
+
+mock_result = {
+    "replies": ["NOT BIASED"],
+    "meta": [
+        {
+            "model": "gpt-3.5-turbo-0125",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {
+                "completion_tokens": 4,
+                "prompt_tokens": 38,
+                "total_tokens": 42,
+            },
+        },
+    ],
+}
 
 
 class YourTestClass(unittest.TestCase):
     def setUp(self):
         # Mock the model's predict method
         self.mock_model_predict = MagicMock(
-            return_value=ResponseList.from_responses(
-                [Response(answer="answer", data="data", query="query")] * 5,
-            ),
+            return_value=mock_result,
         )
-        # Mock the model and assign the predict method
+
         self.mock_model = MagicMock()
-        self.mock_model.predict = self.mock_model_predict
-
-        self.mock_model_loader = MagicMock()
-        self.mock_model_loader.load_model.return_value = self.mock_model
-
-        # Patch the HuggingFaceModelLoader to return the mocked model loader
-        self.patcher_model_loader = patch(
-            "annomatic.llm.huggingface.loader.HuggingFaceModelLoader",
-            return_value=self.mock_model_loader,
-        )
-        self.patcher_model_loader.start()
-
-    def tearDown(self):
-        self.patcher_model_loader.stop()
+        self.mock_model.run = self.mock_model_predict
 
     def test_fill_prompt_without_examples(self):
         df = pd.DataFrame(
             {"text": ["This is a test sentence."]},
         )
 
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
-            model_loader=self.mock_model_loader,
+            out_format="csv",
+            model=self.mock_model,
             annotation_process=DefaultAnnotation(),
         )
         annotator.data_variable = "text"
@@ -62,18 +62,18 @@ class YourTestClass(unittest.TestCase):
             label=["BIASED", "NOT BIASED"],
         )
 
-        assert message == [
-            "Instruction: 'This is a test sentence.'\n\n"
-            "Classify the sentence above as BIASED or NOT BIASED."
-            "\n\nOutput: ",
-        ]
+        assert (
+            message == "Instruction: 'This is a test sentence.'\n\n"
+            "Classify the sentence above as BIASED "
+            "or NOT BIASED.\n\nOutput: "
+        )
 
     def test_fill_prompt_with_examples(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
-            model_loader=self.mock_model_loader,
+            out_format="csv",
+            model=self.mock_model,
             annotation_process=DefaultAnnotation(),
         )
 
@@ -106,24 +106,23 @@ class YourTestClass(unittest.TestCase):
             label=["BIASED", "NOT BIASED"],
         )
 
-        assert message == [
-            "Instruction: 'This is a examples.'\n\n"
+        assert (
+            message == "Instruction: 'This is a examples.'\n\n"
             "Classify the sentence above as BIASED or NOT BIASED."
             "\n\nOutput: BIASED\n\n"
             "Instruction: 'This is a second examples.'\n\n"
             "Classify the sentence above as BIASED or NOT BIASED."
             "\n\nOutput: NOT BIASED\n\n"
             "Instruction: 'This is a test sentence.'\n\n"
-            "Classify the sentence above as BIASED or NOT BIASED."
-            "\n\nOutput: ",
-        ]
+            "Classify the sentence above as BIASED or NOT BIASED.\n\nOutput: "
+        )
 
     def test_fill_prompt_with_Retriever(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
-            model_loader=self.mock_model_loader,
+            out_format="csv",
+            model=self.mock_model,
             annotation_process=DefaultAnnotation(),
         )
 
@@ -160,20 +159,21 @@ class YourTestClass(unittest.TestCase):
             label=["BIASED", "NOT BIASED"],
         )
 
-        assert message == [
-            "Instruction: 'This is a test example.'\n\n"
+        assert (
+            message == "Instruction: 'This is a test example.'\n\n"
             "Classify the sentence above as BIASED or NOT BIASED."
             "\n\nOutput: N0T BIASED\n\n"
             "Instruction: 'This is a test sentence.'\n\n"
             "Classify the sentence above as BIASED or NOT BIASED."
-            "\n\nOutput: ",
-        ]
+            "\n\nOutput: "
+        )
 
     def test_set_data_csv(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
             annotation_process=DefaultAnnotation(),
         )
         annotator.set_data(
@@ -183,10 +183,11 @@ class YourTestClass(unittest.TestCase):
         assert isinstance(annotator.data, pd.DataFrame)
 
     def test_set_data_prompt_matching(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
             annotation_process=DefaultAnnotation(),
         )
 
@@ -210,10 +211,12 @@ class YourTestClass(unittest.TestCase):
         assert annotator.data_variable == "input"
 
     def test_set_data_prompt_raise_value_error(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
 
         template = (
@@ -236,10 +239,12 @@ class YourTestClass(unittest.TestCase):
             raise e_info
 
     def test_set_prompt_str(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
 
         template = (
@@ -254,11 +259,14 @@ class YourTestClass(unittest.TestCase):
         assert isinstance(annotator._prompt, Prompt)
 
     def test_set_prompt_prompt(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
+
         template = (
             "Instruction: '{input}'"
             "\n\n"
@@ -284,10 +292,12 @@ class YourTestClass(unittest.TestCase):
             },
         )
 
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
 
         annotator.post_processor.labels = ["BIASED", "NOT BIASED"]
@@ -302,22 +312,25 @@ class YourTestClass(unittest.TestCase):
         assert df["label"].iloc[4] == "?"
 
     def test_validate_labels_only_init(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            labels=["BIASED", "NON-BIASED"],
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
         annotator._prompt = Prompt("This is a prompt")
         annotator._validate_labels()
 
-        assert annotator._labels == ["BIASED", "NON-BIASED"]
+        assert annotator._labels == ["BIASED", "NOT BIASED"]
 
     def test_validate_labels_only_prompt(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
 
         prompt = Prompt()
@@ -326,16 +339,17 @@ class YourTestClass(unittest.TestCase):
             label_var="labels",
         )
         annotator._prompt = prompt
-        annotator._validate_labels(labels=["BIASED", "NON-BIASED"])
+        annotator._validate_labels(labels=["BIASED", "NOT BIASED"])
 
-        assert annotator._labels == ["BIASED", "NON-BIASED"]
+        assert annotator._labels == ["BIASED", "NOT BIASED"]
 
     def test_validate_labels_matching(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            labels=["BIASED", "NON-BIASED"],
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
 
         prompt = Prompt()
@@ -344,16 +358,17 @@ class YourTestClass(unittest.TestCase):
             label_var="label",
         )
         annotator._prompt = prompt
-        annotator._validate_labels(label=["BIASED", "NON-BIASED"])
+        annotator._validate_labels(label=["BIASED", "NOT BIASED"])
 
-        assert annotator._labels == ["BIASED", "NON-BIASED"]
+        assert annotator._labels == ["BIASED", "NOT BIASED"]
 
     def test_validate_labels_not_matching(self):
-        annotator = HuggingFaceFileAnnotator(
-            model_name="mock",
+        annotator = FileAnnotator(
             out_path="./tests/data/output.csv",
-            labels=["BIASED", "NON-BIASED"],
-            model_loader=self.mock_model_loader,
+            labels=["BIASED", "NOT BIASED"],
+            out_format="csv",
+            model=self.mock_model,
+            annotation_process=DefaultAnnotation(),
         )
 
         prompt = Prompt()
