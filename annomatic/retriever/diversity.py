@@ -2,7 +2,10 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install scikit-learn'") as lazy_import:
+    from sklearn.cluster import KMeans
 
 from .base import Retriever
 
@@ -32,6 +35,7 @@ class DiversityRetriever(Retriever):
         seed: int = 42,
         **kwargs,
     ):
+        lazy_import.check()
         super().__init__(
             k=k,
             pool=pool,

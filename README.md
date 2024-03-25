@@ -39,11 +39,11 @@ To get started with Annomatic, follow these installation steps:
    To install the required dependencies, run the following command:
 
    ```bash
-   poetry install
+   pip install -r requirements.txt
    ```
    or
    ```bash
-   pip install -r requirements.txt
+   poetry install
    ```
 
    Annomatic relies on Haystack 2.0 for its core functionality. Therefore,
