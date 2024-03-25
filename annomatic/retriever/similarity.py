@@ -1,8 +1,12 @@
 from typing import Optional
 
 import pandas as pd
+from haystack.lazy_imports import LazyImport
 
 from .base import Retriever
+
+with LazyImport() as lazy_import:
+    from sentence_transformers import util
 
 
 class SimilarityRetriever(Retriever):
@@ -30,6 +34,7 @@ class SimilarityRetriever(Retriever):
         seed: int = 42,
         **kwargs,
     ):
+        lazy_import.check()
         super().__init__(
             k=k,
             pool=pool,
@@ -50,8 +55,6 @@ class SimilarityRetriever(Retriever):
         Returns:
             The k most similar responses from the given pool of messages.
         """
-        from sentence_transformers import util
-
         if query is None:
             raise ValueError("Query must not be None")
 
