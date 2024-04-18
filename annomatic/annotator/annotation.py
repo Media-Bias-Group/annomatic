@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
+from haystack.components.builders import PromptBuilder
 from tqdm import tqdm
 
 from annomatic.prompt import Prompt
@@ -290,7 +291,7 @@ class DefaultAnnotation(AnnotationProcess):
 
     def fill_prompt(
         self,
-        prompt: Prompt,
+        prompt: Union[Prompt, PromptBuilder],
         batch: pd.DataFrame,
         data_variable: str,
         **kwargs,
@@ -307,21 +308,25 @@ class DefaultAnnotation(AnnotationProcess):
         if prompt is None:
             raise ValueError("Prompt is not set!")
 
-        label_var = prompt.get_label_variable()
-        if label_var is not None and self.labels is not None:
-            kwargs[label_var] = self.labels
+        if isinstance(prompt, Prompt):
+            label_var = prompt.get_label_variable()
+            if label_var is not None and self.labels is not None:
+                kwargs[label_var] = self.labels
 
         messages: List[str] = []
-        for index, row in batch.iterrows():
-            if self.context is not None:
-                icl_part = self.create_context_part(
-                    query=row[str(data_variable)],
-                    **kwargs,
-                )
-            else:
-                icl_part = ""
 
-            kwargs[str(data_variable)] = row[str(data_variable)]
-            messages.append(icl_part + prompt(**kwargs))
+        for index, row in batch.iterrows():
+            if isinstance(prompt, Prompt):
+                if self.context is not None:
+                    icl_part = self.create_context_part(
+                        query=row[str(data_variable)],
+                        **kwargs,
+                    )
+                else:
+                    icl_part = ""
+                kwargs[str(data_variable)] = row[str(data_variable)]
+                messages.append(icl_part + prompt(**kwargs))
+            else:
+                messages.append(prompt.run(**row.to_dict())["prompt"])
 
         return messages[0] if len(messages) == 1 else messages

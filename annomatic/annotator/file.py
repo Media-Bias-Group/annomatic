@@ -4,7 +4,6 @@ import pandas as pd
 
 from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.base import LOGGER, BaseAnnotator
-from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 from annomatic.io.base import BaseOutput
 from annomatic.io.file import create_input_handler, create_output_handler
 from annomatic.prompt import Prompt

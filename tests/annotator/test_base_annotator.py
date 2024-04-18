@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator import FileAnnotator
 from annomatic.annotator.annotation import DefaultAnnotation

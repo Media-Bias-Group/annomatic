@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Union
 
 import pandas as pd
+from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
@@ -31,7 +32,7 @@ class BaseAnnotator(ABC):
         self.kwargs = kwargs
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
-        self._prompt: Optional[Prompt] = None
+        self._prompt: Optional[Union[Prompt, PromptBuilder]] = None
         self.post_processor = post_processor
         self.annotation_process = annotation_process
         self._model = model
@@ -79,22 +80,27 @@ class BaseAnnotator(ABC):
         Returns:
             bool: True if the data variable is valid, False otherwise.
         """
-        if self._prompt is None or self.data_variable is None:
+        if (
+            isinstance(self._prompt, PromptBuilder)
+            or self._prompt is None
+            or self.data_variable is None
+        ):
             # no validation possible
             return True
 
         return self.data_variable in self._prompt.get_variables()
 
-    def set_prompt(self, prompt: Union[Prompt, str]):
+    def set_prompt(self, prompt: Union[PromptBuilder, Prompt, str]):
         if self._prompt is not None:
             LOGGER.info("Prompt is already set. Will be overwritten.")
 
-        if isinstance(prompt, Prompt):
+        if isinstance(prompt, PromptBuilder):
             self._prompt = prompt
-
-            if not self._validate_data_variable():
-                raise ValueError("Input column does not occur in prompt!")
-
+        elif isinstance(prompt, Prompt):
+            LOGGER.info(
+                "Deprecated: Prompt class is deprecated. Use PromptBuilder.",
+            )
+            self._prompt = prompt
         elif isinstance(prompt, str):
             self._prompt = Prompt(content=prompt)
             if not self._validate_data_variable():
