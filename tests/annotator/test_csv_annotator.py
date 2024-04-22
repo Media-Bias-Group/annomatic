@@ -7,7 +7,6 @@ from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator import FileAnnotator
 from annomatic.annotator.annotation import DefaultAnnotation
-from annomatic.prompt.prompt import Prompt
 
 
 class FileAnnotatorTests(unittest.TestCase):

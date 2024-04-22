@@ -7,7 +7,6 @@ from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator import FileAnnotator
 from annomatic.annotator.annotation import DefaultAnnotation
-from annomatic.prompt import Prompt
 
 mock_result = {
     "replies": ["NOT BIASED"],

@@ -7,7 +7,6 @@ from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
-from annomatic.prompt import Prompt
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ class BaseAnnotator(ABC):
         self.kwargs = kwargs
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
-        self._prompt: Optional[Union[Prompt, PromptBuilder]] = None
+        self._prompt: Optional[PromptBuilder] = None
         self.post_processor = post_processor
         self.annotation_process = annotation_process
         self._model = model
