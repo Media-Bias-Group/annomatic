@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import pandas as pd
 from haystack.lazy_imports import LazyImport
@@ -45,7 +45,7 @@ class SimilarityRetriever(Retriever):
             **kwargs,
         )
 
-    def select(self, query: Optional[str] = None) -> pd.DataFrame:
+    def select(self, query: Union[str, pd.DataFrame]) -> pd.DataFrame:
         """
         Selects the most similar responses from the given pool of messages.
 
@@ -63,7 +63,9 @@ class SimilarityRetriever(Retriever):
 
         # Compute embeddings for the query sentence
         query_embedding = self.model.encode(
-            query,
+            query[self.text_variable]
+            if isinstance(query, pd.DataFrame)
+            else query,
             convert_to_tensor=True,
             show_progress_bar=False,
         )
