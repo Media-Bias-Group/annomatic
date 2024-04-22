@@ -49,7 +49,7 @@ class AnnotationProcess(ABC):
     @abstractmethod
     def set_context(
         self,
-        context: Union[Retriever, pd.DataFrame],
+        context: Union[Retriever, pd.DataFrame, dict],
         prompt: Optional[Prompt] = None,
     ) -> None:
         """
@@ -83,20 +83,21 @@ class DefaultAnnotation(AnnotationProcess):
 
     def set_context(
         self,
-        context: Union[Retriever, pd.DataFrame],
+        context: Union[Retriever, pd.DataFrame, dict],
         prompt: Optional[Prompt] = None,
     ) -> None:
         """
-        Sets the context for the ICL prompt. The context can be either a
-        Retriever or a pd.DataFrame.
+        Sets the context for the ICL prompt. The context can be a Retriever,
+        a DataFrame, or a dict.
 
         Args:
-            context: the context for the ICL prompt
+            context: the context used for the annotation
             prompt: a specific prompt handling the context. If no additional
                 prompt is set, the regular prompt is used and the examples are
                 added at the end.
         """
         self.context = context
+        # TODO remove
         self.context_prompt = prompt
 
     def create_context_part(
@@ -122,38 +123,28 @@ class DefaultAnnotation(AnnotationProcess):
                 self.context_prompt = self._prompt
             else:
                 raise ValueError("Prompt is not set!")
-
         label_var = self.context_prompt.get_label_variable()
         if label_var is None:
             raise ValueError("Label variable not found in the ICL prompt.")
-
         if self.context is None or label_var is None:
             raise ValueError("Examples are not set!")
-
         pred_label = None
         message = ""
-
         if isinstance(self.context, Retriever):
             context = self.context.select(query=query)
         else:
             context = self.context
-
         for idx, row in context.iterrows():
             row_dict: Dict[str, Any] = row.to_dict()
-
             if label_var in row_dict:
                 pred_label = row_dict[label_var]
-
             row_dict[label_var] = kwargs[label_var]
             prompt = self.context_prompt(**row_dict)
-
             if pred_label is not None:
                 prompt += f"{pred_label}\n\n"
             else:
                 prompt += "\n\n"
-
             message += prompt
-
         return message
 
     def _num_batches(
@@ -327,6 +318,10 @@ class DefaultAnnotation(AnnotationProcess):
                 kwargs[str(data_variable)] = row[str(data_variable)]
                 messages.append(icl_part + prompt(**kwargs))
             else:
-                messages.append(prompt.run(**row.to_dict())["prompt"])
+                messages.append(
+                    prompt.run(**row.to_dict(), **self.context or {})[
+                        "prompt"
+                    ],
+                )
 
         return messages[0] if len(messages) == 1 else messages
