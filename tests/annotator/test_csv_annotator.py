@@ -1,16 +1,17 @@
 import os
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
+from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator import FileAnnotator
 from annomatic.annotator.annotation import DefaultAnnotation
 from annomatic.prompt.prompt import Prompt
 
 
-class OpenAiFileAnnotatorTests(unittest.TestCase):
-    def test_OpenAiAnnotation_annotate(self):
+class FileAnnotatorTests(unittest.TestCase):
+    def test_FileAnnotator_annotate(self):
         mock_result = {
             "replies": ["NOT BIASED"],
             "meta": [
@@ -55,14 +56,14 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
         )
 
         template = (
-            "Instruction: '{input}'"
+            "Instruction: '{{input}}'"
             "\n\n"
-            "Classify the sentence above as PERSUASIVE TECHNIQUES "
-            "or NO PERSUASIVE TECHNIQUES."
+            "Classify the sentence above as BIASED "
+            "or NO BIASED."
             "\n\n"
             "Output: "
         )
-        prompt = Prompt(content=template)
+        prompt = PromptBuilder(template)
         annotator.set_prompt(prompt=prompt)
         annotator.set_data(
             data=data,
@@ -82,7 +83,7 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
         )
         assert output.shape[0] == data.shape[0]
 
-    def test_openai_annotate_batch(self):
+    def test_FileAnnotator_annotate_batch(self):
         mock_result = {
             "replies": [
                 "NOT BIASED",
@@ -134,19 +135,18 @@ class OpenAiFileAnnotatorTests(unittest.TestCase):
         )
 
         template = (
-            "Instruction: '{input}'"
+            "Instruction: '{{input}}'"
             "\n\n"
             "Classify the sentence above as BIASED "
-            "or NO NOT BIASED."
+            "or NO BIASED."
             "\n\n"
             "Output: "
         )
-        annotator.set_prompt(prompt=template)
         annotator.data_variable = "input"
         res = annotator.annotation_process._annotate_batch(
             model=self.mock_model,
             batch=data,
-            prompt=Prompt(template),
+            prompt=PromptBuilder(template),
             data_variable="input",
             return_df=True,
         )

@@ -90,40 +90,16 @@ class BaseAnnotator(ABC):
 
         return self.data_variable in self._prompt.get_variables()
 
-    def set_prompt(self, prompt: Union[PromptBuilder, Prompt, str]):
+    def set_prompt(self, prompt: Union[PromptBuilder, str]):
         if self._prompt is not None:
             LOGGER.info("Prompt is already set. Will be overwritten.")
 
         if isinstance(prompt, PromptBuilder):
             self._prompt = prompt
-        elif isinstance(prompt, Prompt):
-            LOGGER.info(
-                "Deprecated: Prompt class is deprecated. Use PromptBuilder.",
-            )
-            self._prompt = prompt
         elif isinstance(prompt, str):
-            self._prompt = Prompt(content=prompt)
-            if not self._validate_data_variable():
-                raise ValueError("Input column does not occur in prompt!")
+            self._prompt = PromptBuilder(prompt)
         else:
             raise ValueError(
-                "Invalid input type! " "Only Prompt or str is supported.",
+                "Invalid input type! "
+                "Only PromptBuilder or str is supported.",
             )
-
-    def _validate_labels(self, **kwargs):
-        if self._labels is None:
-            prompt_labels = self._prompt.get_label_variable()
-            labels_from_kwargs = kwargs.get(prompt_labels, None)
-
-            if labels_from_kwargs is not None:
-                self._labels = labels_from_kwargs
-        else:
-            prompt_labels = self._prompt.get_label_variable()
-            labels_from_kwargs = kwargs.get(prompt_labels)
-
-            if labels_from_kwargs is not None and set(self._labels) != set(
-                labels_from_kwargs,
-            ):
-                raise ValueError(
-                    "Labels in prompt and Annotator do not match!",
-                )

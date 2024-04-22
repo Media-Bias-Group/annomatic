@@ -1,15 +1,57 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from haystack.components.builders import PromptBuilder
 from tqdm import tqdm
 
-from annomatic.prompt import Prompt
 from annomatic.retriever.base import Retriever
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _num_batches(
+    total_rows: int,
+    batch_size: int,
+) -> Tuple[int, int]:
+    """
+    Calculates the number of batches and the batch size.
+
+    If self.batch_size is not set, the whole dataset is used as a batch.
+
+    Args:
+        total_rows: int representing the total number of rows.
+    """
+    if not batch_size:
+        return total_rows, 1
+
+    if total_rows < batch_size:
+        return 1, total_rows
+
+    return total_rows // batch_size, batch_size
+
+
+def to_format(
+    batch: pd.DataFrame,
+    messages: Union[List[str], str],
+    responses: Dict,
+    data_variable: str,
+) -> List[Dict]:
+    annotated_data = []
+    for i in range((len(responses["replies"]))):
+        response = responses["replies"][i]
+        raw_data = responses.get("meta", responses["replies"][i])
+        message = messages[i] if isinstance(messages, list) else messages
+
+        parsed_response = {
+            data_variable: batch.iloc[i][data_variable],
+            "response": response,
+            "raw_data": raw_data,
+            "query": message,
+        }
+        annotated_data.append(parsed_response)
+    return annotated_data
 
 
 class AnnotationProcess(ABC):
@@ -22,12 +64,13 @@ class AnnotationProcess(ABC):
         labels: Optional[List[str]] = None,
     ):
         self.labels = labels
+        self.context: Optional[dict] = None
 
     @abstractmethod
     def annotate(
         self,
         model,
-        prompt: Prompt,
+        prompt: PromptBuilder,
         data: pd.DataFrame,
         data_variable: str,
         batch_size: int,
@@ -47,31 +90,64 @@ class AnnotationProcess(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def _annotate_batch(
+        self,
+        model,
+        prompt: PromptBuilder,
+        batch: pd.DataFrame,
+        data_variable: str,
+        **kwargs,
+    ) -> List[dict]:
+        raise NotImplementedError()
+
     def set_context(
         self,
-        context: Union[Retriever, pd.DataFrame, dict],
-        prompt: Optional[Prompt] = None,
+        context: dict,
     ) -> None:
         """
-        Sets the context for context-based annotations.
+        Sets the context for the ICL prompt. The context is
+        a dict where the key represents the variable name in the prompt.
 
         Args:
             context: the context used for the annotation
-            prompt: a specific prompt used for the examples. If no
-                additional prompt is set, the regular prompt is used and the
-                examples are added at the end.
         """
-        raise NotImplementedError()
+        self.context = context
+
+    def build_context(self, query) -> Dict:
+        if self.context is None:
+            return {}
+
+        return {
+            k: v.select(query=query) if isinstance(v, Retriever) else v
+            for k, v in self.context.items()
+        }
+
+    def fill_prompt(
+        self,
+        prompt: PromptBuilder,
+        batch: pd.DataFrame,
+    ) -> Union[List[str], str]:
+        """
+        Creates the prompt passed to the model.
+
+        Args:
+            prompt: Prompt representing the prompt used for annotation.
+            batch: pd.DataFrame representing the input data.
+        """
+        if prompt is None:
+            raise ValueError("Prompt is not set!")
+
+        messages = [
+            prompt.run(**row.to_dict(), **self.build_context(row))["prompt"]
+            for _, row in batch.iterrows()
+        ]
+
+        return messages[0] if len(messages) == 1 else messages
 
 
 class DefaultAnnotation(AnnotationProcess):
     """
     Default annotation process.
-
-       Args:
-           batch_size: the batch size for the annotation process
-
-
     """
 
     def __init__(
@@ -79,99 +155,12 @@ class DefaultAnnotation(AnnotationProcess):
         labels: Optional[List[str]] = None,
     ):
         super().__init__(labels=labels)
-        self.context: Union[Retriever, pd.DataFrame, None] = None
-
-    def set_context(
-        self,
-        context: Union[Retriever, pd.DataFrame, dict],
-        prompt: Optional[Prompt] = None,
-    ) -> None:
-        """
-        Sets the context for the ICL prompt. The context can be a Retriever,
-        a DataFrame, or a dict.
-
-        Args:
-            context: the context used for the annotation
-            prompt: a specific prompt handling the context. If no additional
-                prompt is set, the regular prompt is used and the examples are
-                added at the end.
-        """
-        self.context = context
-        # TODO remove
-        self.context_prompt = prompt
-
-    def create_context_part(
-        self,
-        query: Optional[str],
-        **kwargs,
-    ) -> str:
-        """
-        Creates an ICL prompt. If the label is known, it is added to the
-        prompt at the end.
-
-        Args:
-            query: the sentence to get the icl context for
-            kwargs: a dict containing the input variables for templates
-
-        Returns:
-            str: the ICL prompt part.
-        """
-
-        # if no special icl prompt set use regular prompt
-        if self.context_prompt is None:
-            if hasattr(self, "_prompt"):
-                self.context_prompt = self._prompt
-            else:
-                raise ValueError("Prompt is not set!")
-        label_var = self.context_prompt.get_label_variable()
-        if label_var is None:
-            raise ValueError("Label variable not found in the ICL prompt.")
-        if self.context is None or label_var is None:
-            raise ValueError("Examples are not set!")
-        pred_label = None
-        message = ""
-        if isinstance(self.context, Retriever):
-            context = self.context.select(query=query)
-        else:
-            context = self.context
-        for idx, row in context.iterrows():
-            row_dict: Dict[str, Any] = row.to_dict()
-            if label_var in row_dict:
-                pred_label = row_dict[label_var]
-            row_dict[label_var] = kwargs[label_var]
-            prompt = self.context_prompt(**row_dict)
-            if pred_label is not None:
-                prompt += f"{pred_label}\n\n"
-            else:
-                prompt += "\n\n"
-            message += prompt
-        return message
-
-    def _num_batches(
-        self,
-        total_rows: int,
-        batch_size: int,
-    ) -> Tuple[int, int]:
-        """
-        Calculates the number of batches and the batch size.
-
-        If self.batch_size is not set, the whole dataset is used as a batch.
-
-        Args:
-            total_rows: int representing the total number of rows.
-        """
-        if not batch_size:
-            return total_rows, 1
-
-        if total_rows < batch_size:
-            return 1, total_rows
-
-        return total_rows // batch_size, batch_size
+        self.context: Optional[dict] = None
 
     def annotate(
         self,
         model,
-        prompt: Prompt,
+        prompt: PromptBuilder,
         data: pd.DataFrame,
         data_variable: str,
         batch_size: int,
@@ -183,7 +172,7 @@ class DefaultAnnotation(AnnotationProcess):
         output_data = []
 
         total_rows = data.shape[0]
-        num_batches, batch_size = self._num_batches(total_rows, batch_size)
+        num_batches, batch_size = _num_batches(total_rows, batch_size)
 
         LOGGER.info(f"Starting Annotation of {total_rows}")
         for idx in tqdm(range(num_batches)):
@@ -211,12 +200,12 @@ class DefaultAnnotation(AnnotationProcess):
             return pd.DataFrame(output_data)
         except Exception as df_error:
             LOGGER.error(f"Output dataframe error: {str(df_error)}")
-            return None
+            return pd.DataFrame()
 
     def _annotate_batch(
         self,
         model,
-        prompt: Prompt,
+        prompt: PromptBuilder,
         batch: pd.DataFrame,
         data_variable: str,
         **kwargs,
@@ -241,87 +230,14 @@ class DefaultAnnotation(AnnotationProcess):
                 "Model or prompt is not set! ",
             )
 
+        messages = self.fill_prompt(
+            prompt=prompt,
+            batch=batch,
+        )
         try:
-            messages = self.fill_prompt(
-                prompt=prompt,
-                batch=batch,
-                data_variable=data_variable,
-                **kwargs,
-            )
-
             responses = model.run(messages)
-
-            return self.to_format(batch, messages, responses, data_variable)
+            return to_format(batch, messages, responses, data_variable)
 
         except Exception as exception:
             LOGGER.error(f"Prediction error: {str(exception)}")
             return []
-
-    def to_format(
-        self,
-        batch: pd.DataFrame,
-        messages: Union[List[str], str],
-        responses: Dict,
-        data_variable: str,
-    ) -> list[Dict]:
-        annotated_data = []
-
-        for i in range((len(responses["replies"]))):
-            response = responses["replies"][i]
-            raw_data = responses.get("meta", responses["replies"][i])
-            message = messages[i] if isinstance(messages, list) else messages
-
-            parsed_response = {
-                data_variable: batch.iloc[i][data_variable],
-                "response": response,
-                "raw_data": raw_data,
-                "query": message,
-            }
-            annotated_data.append(parsed_response)
-        return annotated_data
-
-    def fill_prompt(
-        self,
-        prompt: Union[Prompt, PromptBuilder],
-        batch: pd.DataFrame,
-        data_variable: str,
-        **kwargs,
-    ) -> Union[List[str], str]:
-        """
-        Creates the prompt passed to the model.
-
-        Args:
-            prompt: Prompt representing the prompt used for annotation.
-            batch: pd.DataFrame representing the input data.
-            data_variable: str representing the variable in the input data.
-            kwargs: a dict containing the input variables for templates(
-        """
-        if prompt is None:
-            raise ValueError("Prompt is not set!")
-
-        if isinstance(prompt, Prompt):
-            label_var = prompt.get_label_variable()
-            if label_var is not None and self.labels is not None:
-                kwargs[label_var] = self.labels
-
-        messages: List[str] = []
-
-        for index, row in batch.iterrows():
-            if isinstance(prompt, Prompt):
-                if self.context is not None:
-                    icl_part = self.create_context_part(
-                        query=row[str(data_variable)],
-                        **kwargs,
-                    )
-                else:
-                    icl_part = ""
-                kwargs[str(data_variable)] = row[str(data_variable)]
-                messages.append(icl_part + prompt(**kwargs))
-            else:
-                messages.append(
-                    prompt.run(**row.to_dict(), **self.context or {})[
-                        "prompt"
-                    ],
-                )
-
-        return messages[0] if len(messages) == 1 else messages
