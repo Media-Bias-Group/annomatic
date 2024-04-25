@@ -141,7 +141,8 @@ class FileAnnotator(BaseAnnotator):
         if data is not None:
             self.set_data(
                 data=data,
-                data_variable=kwargs.get("data_variable", "input"),
+                data_variable=self.data_variable
+                or kwargs.get("data_variable", "input"),
             )
 
         if self._labels is not None:
