@@ -7,6 +7,7 @@ from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
+from annomatic.io.base import BaseOutput
 
 LOGGER = logging.getLogger(__name__)
 
@@ -20,9 +21,9 @@ class BaseAnnotator(ABC):
         self,
         model,
         annotation_process: AnnotationProcess = DefaultAnnotation(),
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         batch_size: int = 1,
         labels: Optional[List[str]] = None,
-        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -35,6 +36,9 @@ class BaseAnnotator(ABC):
         self.post_processor = post_processor
         self.annotation_process = annotation_process
         self._model = model
+
+    def model_name(self):
+        return self._model._get_telemetry_data().get("model")
 
     @abstractmethod
     def annotate(
@@ -54,7 +58,7 @@ class BaseAnnotator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def set_data(
+    def set_input(
         self,
         data: Any,
         data_variable: str,
@@ -102,3 +106,22 @@ class BaseAnnotator(ABC):
                 "Invalid input type! "
                 "Only PromptBuilder or str is supported.",
             )
+
+    @classmethod
+    def from_model(
+        cls,
+        model,
+        annotation_process: AnnotationProcess = DefaultAnnotation(),
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
+        batch_size: int = 1,
+        labels: Optional[List[str]] = None,
+        **kwargs,
+    ):
+        return cls(
+            model,
+            annotation_process=annotation_process,
+            post_processor=post_processor,
+            batch_size=batch_size,
+            labels=labels,
+            **kwargs,
+        )

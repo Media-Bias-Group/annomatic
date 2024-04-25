@@ -43,13 +43,12 @@ model = HuggingFaceLocalGenerator(
 # create annotator
 annotator = FileAnnotator(
     model=model,
-    out_path="./output.csv",
-    out_format="csv",
+    output="./output.csv",
     labels=["BIASED", "NOT BIASED"],
 )
 
 # set data and prompt
-annotator.set_data(df, data_variable="text")
+annotator.set_input(df, data_variable="text")
 annotator.set_prompt(prompt)
 
 # map the examples to the prompt value for examples
