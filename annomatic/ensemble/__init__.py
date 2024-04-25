@@ -1,1 +1,1 @@
-from .base import FileAnnotatorEnsemble
+from .base import AnnotatorEnsemble

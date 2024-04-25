@@ -4,6 +4,7 @@ import pandas as pd
 
 from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.base import LOGGER, BaseAnnotator
+from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
 from annomatic.io.base import BaseOutput
 from annomatic.io.file import create_input_handler, create_output_handler
 
@@ -16,7 +17,7 @@ class FileAnnotator(BaseAnnotator):
         batch_size (int): Size of the batch.
         labels (List[str]): List of labels that should be used
                             for soft parsing.
-        output_handler (BaseOutput): Output handler for the annotated data.
+        output_handler (BaseFileOutput): Output handler for the annotated data.
         out_path (str): Path to the output file.
         out_format (str): Format of the output file. Supported formats are
             'csv' and 'parquet'. Defaults to 'csv'.
@@ -27,6 +28,7 @@ class FileAnnotator(BaseAnnotator):
         self,
         model,
         annotation_process: AnnotationProcess = DefaultAnnotation(),
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         output_handler: Optional[BaseOutput] = None,
         out_path: Optional[str] = None,
         out_format: Optional[str] = None,
@@ -38,6 +40,7 @@ class FileAnnotator(BaseAnnotator):
             model=model,
             annotation_process=annotation_process,
             batch_size=batch_size,
+            post_processor=post_processor,
             labels=labels,
             **kwargs,
         )
@@ -70,8 +73,8 @@ class FileAnnotator(BaseAnnotator):
     def set_data(
         self,
         data: Union[pd.DataFrame, str],
-        data_variable: str = "input",
-        in_format: str = "csv",
+        data_variable: Optional[str] = "input",
+        in_format: Optional[str] = "csv",
         sep: str = ",",
     ):
         """
@@ -178,3 +181,28 @@ class FileAnnotator(BaseAnnotator):
             return annotated_data
         else:
             return None
+
+    @classmethod
+    def from_model(
+        cls,
+        model,
+        annotation_process: AnnotationProcess = DefaultAnnotation(),
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
+        batch_size: int = 1,
+        labels: Optional[List[str]] = None,
+        output_handler: Optional[BaseOutput] = None,
+        out_path: Optional[str] = None,
+        out_format: Optional[str] = None,
+        **kwargs,
+    ):
+        return cls(
+            model,
+            annotation_process=annotation_process,
+            post_processor=post_processor,
+            batch_size=batch_size,
+            labels=labels,
+            output_handler=output_handler,
+            out_path=out_path,
+            out_format=out_format,
+            **kwargs,
+        )

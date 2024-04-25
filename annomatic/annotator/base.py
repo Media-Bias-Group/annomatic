@@ -7,7 +7,7 @@ from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
-from annomatic.io.base import BaseIO
+from annomatic.io.base import BaseOutput
 
 LOGGER = logging.getLogger(__name__)
 
@@ -115,7 +115,13 @@ class BaseAnnotator(ABC):
         post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         batch_size: int = 1,
         labels: Optional[List[str]] = None,
-        output: Optional[BaseIO] = None,
         **kwargs,
     ):
-        raise NotImplementedError()
+        return cls(
+            model,
+            annotation_process=annotation_process,
+            post_processor=post_processor,
+            batch_size=batch_size,
+            labels=labels,
+            **kwargs,
+        )

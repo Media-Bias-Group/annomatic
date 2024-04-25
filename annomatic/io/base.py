@@ -62,3 +62,16 @@ class BaseOutput(BaseIO, ABC):
             content (str): The content to be written to the file.
         """
         raise NotImplementedError()
+
+
+class DummyOutput(BaseOutput):
+    """
+    Dummy output class for ensembles annotation without writing to file
+    during the process.
+    """
+
+    def __init__(self):
+        super().__init__("")
+
+    def write(self, content: Any):
+        pass

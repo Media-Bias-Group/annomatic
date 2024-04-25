@@ -1,6 +1,6 @@
 import logging
-from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Union
+from abc import ABC
+from typing import List, Optional, Union
 
 import pandas as pd
 from haystack import component
@@ -18,81 +18,18 @@ LOGGER = logging.getLogger(__name__)
 class AnnotatorEnsemble(ABC):
     def __init__(
         self,
-        annotators: Optional[List[BaseAnnotator]] = None,
-        prompt: Optional[Union[PromptBuilder, str]] = None,
-        **kwargs,
-    ):
-        if annotators is None:
-            annotators = []
-        self.annotators = annotators
-        self.prompt = prompt
-
-    def add_annotator(self, annotator):
-        self.annotators.append(annotator)
-
-    @abstractmethod
-    def annotate(
-        self,
-        data: Optional[Any] = None,
-        return_df: bool = False,
-        **kwargs,
-    ):
-        raise NotImplementedError()
-
-    @classmethod
-    def from_annotators(
-        cls,
-        annotators: List[BaseAnnotator],
-        prompt: Union[PromptBuilder, str] = None,
-        **kwargs,
-    ):
-        return cls(annotators=annotators, prompt=prompt, **kwargs)
-
-    @classmethod
-    def from_models(
-        cls,
-        models: List[component],
-        prompt: Union[PromptBuilder, str],
-        annotation_process: AnnotationProcess = DefaultAnnotation(),
-        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
-        labels: Optional[List[str]] = None,
-        **kwargs,
-    ):
-        """
-        Creates an AnnotatorEnsemble from a list of models.
-
-        Args:
-            models: representing the models used in the ensemble.
-            prompt: prompt for the ensemble.
-            annotation_process: the annotation process.
-            post_processor: the post-processor.
-            labels: representing the target labels.
-            **kwargs: Optional arguments to be passed to the annotators.
-        """
-        annotators = [
-            BaseAnnotator.from_model(
-                model,
-                annotation_process=annotation_process,
-                post_processor=post_processor,
-                labels=labels,
-            )
-            for model in models
-        ]
-
-        return cls(annotators=annotators, prompt=prompt, **kwargs)
-
-
-class FileAnnotatorEnsemble(AnnotatorEnsemble):
-    def __init__(
-        self,
         annotators: List[BaseAnnotator],
         prompt: Union[PromptBuilder, str] = None,
         output_handler: Optional[BaseOutput] = None,
         out_path: Optional[str] = None,
         out_format: Optional[str] = None,
     ):
-        super().__init__(annotators, prompt)
+        if annotators is None:
+            annotators = []
+        self.annotators = annotators
+        self.prompt = prompt
         self.data: Optional[pd.DataFrame] = None
+        self.data_variable: Optional[str] = None
         if output_handler:
             self._output_handler = output_handler
         elif out_path and out_format:
@@ -172,6 +109,7 @@ class FileAnnotatorEnsemble(AnnotatorEnsemble):
     def annotate(
         self,
         data: Optional[pd.DataFrame] = None,
+        data_variable: Optional[str] = None,
         return_df: bool = False,
         **kwargs,
     ) -> Optional[pd.DataFrame]:
@@ -186,6 +124,11 @@ class FileAnnotatorEnsemble(AnnotatorEnsemble):
             **kwargs: Optional arguments to be passed to the annotators.
         """
         # TODO start result with only the data variable
+
+        if data is not None:
+            self.data = data
+        if data_variable is not None:
+            self.data_variable = data_variable
 
         # verify inputs
         if self.data is not None and self.data_variable is not None:
@@ -220,3 +163,62 @@ class FileAnnotatorEnsemble(AnnotatorEnsemble):
         self._output_handler.write(res)
 
         return res if return_df else None
+
+    def add_annotator(self, annotator):
+        self.annotators.append(annotator)
+
+    @classmethod
+    def from_annotators(
+        cls,
+        annotators: List[BaseAnnotator],
+        prompt: Union[PromptBuilder, str] = None,
+        output_handler: Optional[BaseOutput] = None,
+        out_path: Optional[str] = None,
+        out_format: Optional[str] = None,
+        **kwargs,
+    ):
+        return cls(
+            annotators=annotators,
+            prompt=prompt,
+            output_handler=output_handler,
+            out_path=out_path,
+            out_format=out_format,
+        )
+
+    @classmethod
+    def from_models(
+        cls,
+        models: List[component],
+        prompt: Union[PromptBuilder, str],
+        annotation_process: AnnotationProcess = DefaultAnnotation(),
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
+        labels: Optional[List[str]] = None,
+        **kwargs,
+    ):
+        """
+        Creates an AnnotatorEnsemble from a list of models.
+
+        Args:
+            models: representing the models used in the ensemble.
+            prompt: prompt for the ensemble.
+            annotation_process: the annotation process.
+            post_processor: the post-processor.
+            labels: representing the target labels.
+
+            **kwargs: Optional arguments to be passed to the annotators.
+        """
+        from annomatic.annotator import FileAnnotator
+        from annomatic.io.base import DummyOutput
+
+        annotators = [
+            FileAnnotator.from_model(
+                model,
+                annotation_process=annotation_process,
+                post_processor=post_processor,
+                labels=labels,
+                output_handler=DummyOutput(),
+            )
+            for model in models
+        ]
+
+        return cls(annotators=annotators, prompt=prompt, **kwargs)
