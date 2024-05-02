@@ -27,11 +27,9 @@ class FileAnnotator(BaseAnnotator):
     def __init__(
         self,
         model,
+        output: Union[BaseOutput, str],
         annotation_process: AnnotationProcess = DefaultAnnotation(),
         post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
-        output_handler: Optional[BaseOutput] = None,
-        out_path: Optional[str] = None,
-        out_format: Optional[str] = None,
         labels: Optional[List[str]] = None,
         batch_size: int = 1,  # default to 1 for non-batch models
         **kwargs,
@@ -45,18 +43,14 @@ class FileAnnotator(BaseAnnotator):
             **kwargs,
         )
 
-        if output_handler:
-            self._output_handler = output_handler
-        elif out_path and out_format:
-            self._output_handler = create_output_handler(
-                path=out_path,
-                type=out_format,
-            )
-        else:
+        if isinstance(output, str):
+            output = create_output_handler(output)
+        elif not isinstance(output, BaseOutput):
             raise ValueError(
-                "Must provide either an output_handler "
-                "or both out_path and out_format.",
+                "Please provide eather a path with a "
+                "supported filetype or a BaseOutput",
             )
+        self.output = output
 
     def set_context(
         self,
@@ -70,11 +64,10 @@ class FileAnnotator(BaseAnnotator):
 
         self.annotation_process.set_context(context)
 
-    def set_data(
+    def set_input(
         self,
         data: Union[pd.DataFrame, str],
         data_variable: Optional[str] = "input",
-        in_format: Optional[str] = "csv",
         sep: str = ",",
     ):
         """
@@ -104,7 +97,6 @@ class FileAnnotator(BaseAnnotator):
         elif isinstance(data, str):
             self.data = create_input_handler(
                 path=data,
-                type=in_format,
             ).read(sep=sep)
         else:
             raise ValueError(
@@ -122,7 +114,7 @@ class FileAnnotator(BaseAnnotator):
         Annotates the input data and writes the annotated data to the
         output CSV file. Also performs some setup if needed.
 
-        This method also accepts the arguments for set_data and set_prompt.
+        This method also accepts the arguments for set_input and set_prompt.
 
 
         Args:
@@ -138,11 +130,11 @@ class FileAnnotator(BaseAnnotator):
         if self.post_processor is None:
             raise ValueError("Post processor is not set!")
 
-        if self._output_handler is None:
+        if self.output is None:
             raise ValueError("Output handler is not set!")
 
         if data is not None:
-            self.set_data(
+            self.set_input(
                 data=data,
                 data_variable=self.data_variable
                 or kwargs.get("data_variable", "input"),
@@ -175,7 +167,7 @@ class FileAnnotator(BaseAnnotator):
         )
 
         self.post_processor.process(df=annotated_data)
-        self._output_handler.write(annotated_data)
+        self.output.write(annotated_data)
 
         if return_df:
             return annotated_data

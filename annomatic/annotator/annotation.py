@@ -39,17 +39,17 @@ def to_format(
     data_variable: str,
 ) -> List[Dict]:
     annotated_data = []
-    for i in range((len(responses["replies"]))):
-        response = responses["replies"][i]
-        raw_data = responses.get("meta", responses["replies"][i])
-        message = messages[i] if isinstance(messages, list) else messages
-
+    for i, response in enumerate(responses["replies"]):
         parsed_response = {
             data_variable: batch.iloc[i][data_variable],
             "response": response,
-            "raw_data": raw_data,
-            "query": message,
+            "query": messages[i] if isinstance(messages, list) else messages,
         }
+
+        # Add meta data if available
+        if "meta" in responses:
+            parsed_response["meta"] = responses["meta"]
+
         annotated_data.append(parsed_response)
     return annotated_data
 

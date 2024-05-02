@@ -58,7 +58,7 @@ class BaseAnnotator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def set_data(
+    def set_input(
         self,
         data: Any,
         data_variable: str,

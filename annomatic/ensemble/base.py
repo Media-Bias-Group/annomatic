@@ -19,10 +19,8 @@ class AnnotatorEnsemble(ABC):
     def __init__(
         self,
         annotators: List[BaseAnnotator],
+        output: Union[BaseOutput, str],
         prompt: Union[PromptBuilder, str] = None,
-        output_handler: Optional[BaseOutput] = None,
-        out_path: Optional[str] = None,
-        out_format: Optional[str] = None,
     ):
         if annotators is None:
             annotators = []
@@ -30,24 +28,20 @@ class AnnotatorEnsemble(ABC):
         self.prompt = prompt
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
-        if output_handler:
-            self._output_handler = output_handler
-        elif out_path and out_format:
-            self._output_handler = create_output_handler(
-                path=out_path,
-                type=out_format,
-            )
-        else:
-            raise ValueError(
-                "Must provide either an output_handler "
-                "or both out_path and out_format.",
-            )
 
-    def set_data(
+        if isinstance(output, str):
+            output = create_output_handler(output)
+        elif not isinstance(output, BaseOutput):
+            raise ValueError(
+                "Please provide eather a path with a "
+                "supported filetype or a BaseOutput",
+            )
+        self.output = output
+
+    def set_input(
         self,
         data: Union[pd.DataFrame, str],
         data_variable: str = "input",
-        in_format: str = "csv",
         sep: str = ",",
     ):
         """
@@ -74,7 +68,6 @@ class AnnotatorEnsemble(ABC):
         elif isinstance(data, str):
             self.data = create_input_handler(
                 path=data,
-                type=in_format,
             ).read(sep=sep)
         else:
             raise ValueError(
@@ -84,7 +77,7 @@ class AnnotatorEnsemble(ABC):
 
         # set data for all annotators
         for annotator in self.annotators:
-            annotator.set_data(self.data, data_variable=self.data_variable)
+            annotator.set_input(self.data, data_variable=self.data_variable)
 
     def set_prompt(self, prompt: Union[PromptBuilder, str]):
         """
@@ -118,7 +111,7 @@ class AnnotatorEnsemble(ABC):
 
         Args:
             data: Optional[Any] representing the input data. If not provided,
-                  the data set with set_data will be used.
+                  the data set with set_input will be used.
             return_df: bool representing whether to return the annotated data
                        as a DataFrame or not.
             **kwargs: Optional arguments to be passed to the annotators.
@@ -160,7 +153,7 @@ class AnnotatorEnsemble(ABC):
             res = res.merge(annotator_data, on=self.data_variable, how="left")
             # TODO release memory
 
-        self._output_handler.write(res)
+        self.output.write(res)
 
         return res if return_df else None
 
@@ -171,24 +164,21 @@ class AnnotatorEnsemble(ABC):
     def from_annotators(
         cls,
         annotators: List[BaseAnnotator],
+        output: Union[BaseOutput, str],
         prompt: Union[PromptBuilder, str] = None,
-        output_handler: Optional[BaseOutput] = None,
-        out_path: Optional[str] = None,
-        out_format: Optional[str] = None,
         **kwargs,
     ):
         return cls(
             annotators=annotators,
             prompt=prompt,
-            output_handler=output_handler,
-            out_path=out_path,
-            out_format=out_format,
+            output=output,
         )
 
     @classmethod
     def from_models(
         cls,
         models: List[component],
+        output: Union[BaseOutput, str],
         prompt: Union[PromptBuilder, str],
         annotation_process: AnnotationProcess = DefaultAnnotation(),
         post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
@@ -221,4 +211,9 @@ class AnnotatorEnsemble(ABC):
             for model in models
         ]
 
-        return cls(annotators=annotators, prompt=prompt, **kwargs)
+        return cls(
+            annotators=annotators,
+            output=output,
+            prompt=prompt,
+            **kwargs,
+        )
