@@ -18,10 +18,14 @@ def _num_batches(
     """
     Calculates the number of batches and the batch size.
 
-    If self.batch_size is not set, the whole dataset is used as a batch.
+    If batch size is not set, default to batch size of 1.
 
     Args:
-        total_rows: int representing the total number of rows.
+        total_rows: int representing the total number of rows
+        batch_size: int representing a predefined batch size
+
+    Returns:
+        Tuple of number of batches and batch_size as int
     """
     if not batch_size:
         return total_rows, 1
