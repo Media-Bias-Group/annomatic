@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -69,7 +69,7 @@ class DiversityRetriever(Retriever):
 
         return kmeans.labels_
 
-    def select(self, query: Optional[str] = None) -> pd.DataFrame:
+    def select(self, query: Union[str, pd.DataFrame]) -> pd.DataFrame:
         """
         Selects diverse response from the given pool of messages.
 

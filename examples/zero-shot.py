@@ -1,9 +1,8 @@
 import pandas as pd
+from haystack.components.builders import PromptBuilder
 from haystack.components.generators import HuggingFaceLocalGenerator
 
 from annomatic.annotator import FileAnnotator
-from annomatic.config.factory import ConfigFactory
-from annomatic.prompt import Prompt
 
 # create dataframe with textual data
 text = [
@@ -12,11 +11,11 @@ text = [
 ]
 df = pd.DataFrame({"text": text})
 
-# create a Prompt object (with f-string template)
-prompt = Prompt()
-prompt.add_part("Instruction: '{text}'")
-prompt.add_labels_part("Classify the sentence above as {label}.")
-prompt.add_part("Output: ")
+prompt = PromptBuilder(
+    "Instruction: '{{text}}'\n"
+    "Classify the sentence above as BIASED or NOT BIASED.\n"
+    "Output: ",
+)
 
 # create model via Haystack 2.0
 model = HuggingFaceLocalGenerator(
@@ -30,11 +29,12 @@ annotator = FileAnnotator(
     out_path="./output.csv",
     out_format="csv",
     batch_size=2,
+    labels=["BIASED", "NOT BIASED"],
 )
 
 annotator.set_data(df, data_variable="text")
 annotator.set_prompt(prompt)
 
 # annotate the data and return as df
-result = annotator.annotate(label=["BIASED", "NOT BIASED"], return_df=True)
+result = annotator.annotate(return_df=True)
 print(result)

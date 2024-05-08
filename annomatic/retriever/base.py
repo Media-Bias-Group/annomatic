@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Union
 
 import pandas as pd
 from haystack.lazy_imports import LazyImport
@@ -63,7 +63,7 @@ class Retriever(ABC):
         return self.embeddings
 
     @abstractmethod
-    def select(self, query: Optional[str] = None) -> pd.DataFrame:
+    def select(self, query: Union[str, pd.DataFrame]) -> pd.DataFrame:
         """
         Selects the best examples from the given pool of messages.
 

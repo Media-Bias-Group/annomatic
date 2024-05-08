@@ -59,7 +59,7 @@ def test_diversity_retriever():
         pool=df,
         seed=42,
     )
-    result = retriever.select()
+    result = retriever.select("")
 
     assert (
         result.iloc[0]["text"]
@@ -67,7 +67,7 @@ def test_diversity_retriever():
     )
     assert result.iloc[1]["text"] == "I like to eat apples"
 
-    result = retriever.select()
+    result = retriever.select("")
     assert (
         result.iloc[0]["text"]
         == "This sentence is very different from the others"

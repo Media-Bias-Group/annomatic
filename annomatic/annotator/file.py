@@ -1,13 +1,11 @@
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
 from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
 from annomatic.annotator.base import LOGGER, BaseAnnotator
-from annomatic.config.base import HuggingFaceConfig, OpenAiConfig, VllmConfig
 from annomatic.io.base import BaseOutput
 from annomatic.io.file import create_input_handler, create_output_handler
-from annomatic.prompt import Prompt
 
 
 class FileAnnotator(BaseAnnotator):
@@ -59,8 +57,7 @@ class FileAnnotator(BaseAnnotator):
 
     def set_context(
         self,
-        context: Union[pd.DataFrame, str],
-        prompt: Union[str, Prompt, None] = None,
+        context: Dict[str, Any],
     ):
         """
         Sets the context for context-based annotations.
@@ -68,10 +65,7 @@ class FileAnnotator(BaseAnnotator):
         if self.annotation_process is None:
             raise ValueError("Annotation process is not set!")
 
-        if isinstance(prompt, str):
-            prompt = Prompt(content=prompt)
-
-        self.annotation_process.set_context(context, prompt or self._prompt)
+        self.annotation_process.set_context(context)
 
     def set_data(
         self,
@@ -149,11 +143,6 @@ class FileAnnotator(BaseAnnotator):
                 data=data,
                 data_variable=kwargs.get("data_variable", "input"),
             )
-
-        if self._prompt is None:
-            self.set_prompt(prompt=kwargs.get("prompt", None))
-
-        self._validate_labels(**kwargs)
 
         if self._labels is not None:
             self.post_processor.labels = self._labels
