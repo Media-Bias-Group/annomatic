@@ -149,7 +149,7 @@ class AnnotationProcess(ABC):
         return messages[0] if len(messages) == 1 else messages
 
 
-class DefaultAnnotation(AnnotationProcess):
+class DefaultAnnotationProcess(AnnotationProcess):
     """
     Default annotation process.
     """

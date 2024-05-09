@@ -6,7 +6,7 @@ import pandas as pd
 from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator import FileAnnotator
-from annomatic.annotator.annotation import DefaultAnnotation
+from annomatic.annotator.annotation import DefaultAnnotationProcess
 
 
 class FileAnnotatorTests(unittest.TestCase):
@@ -47,7 +47,7 @@ class FileAnnotatorTests(unittest.TestCase):
             output="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
             model=self.mock_model,
-            annotation_process=DefaultAnnotation(),
+            annotation_process=DefaultAnnotationProcess(),
         )
         data = pd.read_csv(
             "./tests/data/input.csv",
@@ -128,7 +128,7 @@ class FileAnnotatorTests(unittest.TestCase):
             output="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
             model=self.mock_model,
-            annotation_process=DefaultAnnotation(),
+            annotation_process=DefaultAnnotationProcess(),
         )
 
         template = (

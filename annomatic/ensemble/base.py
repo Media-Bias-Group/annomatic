@@ -6,7 +6,10 @@ import pandas as pd
 from haystack import component
 from haystack.components.builders import PromptBuilder
 
-from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
+from annomatic.annotator.annotation import (
+    AnnotationProcess,
+    DefaultAnnotationProcess,
+)
 from annomatic.annotator.base import BaseAnnotator
 from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
 from annomatic.io.base import BaseOutput
@@ -20,12 +23,10 @@ class AnnotatorEnsemble(ABC):
         self,
         annotators: List[BaseAnnotator],
         output: Union[BaseOutput, str],
-        prompt: Union[PromptBuilder, str] = None,
     ):
         if annotators is None:
             annotators = []
         self.annotators = annotators
-        self.prompt = prompt
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
 
@@ -87,15 +88,6 @@ class AnnotatorEnsemble(ABC):
             prompt: Union[PromptBuilder, str] representing the prompt for the
                     annotator ensemble.
         """
-        if not (isinstance(prompt, PromptBuilder) or isinstance(prompt, str)):
-            raise ValueError(
-                "Invalid input type! "
-                "Only PromptBuilder or str is supported.",
-            )
-
-        if isinstance(prompt, str):
-            prompt = PromptBuilder(prompt)
-
         for a in self.annotators:
             a.set_prompt(prompt)
 
@@ -151,7 +143,18 @@ class AnnotatorEnsemble(ABC):
             LOGGER.info(f"Annotating with {name} done.")
             # merge the data with the previous annotator
             res = res.merge(annotator_data, on=self.data_variable, how="left")
-            # TODO release memory
+
+            # release memory after use (for local hf models)
+            if (
+                hasattr(annotator, "pipeline")
+                and annotator.pipeline is not None
+            ):
+                import torch
+
+                del annotator.pipeline
+                torch.cuda.empty_cache()
+
+        # TODO majority vote?
 
         self.output.write(res)
 
@@ -165,13 +168,12 @@ class AnnotatorEnsemble(ABC):
         cls,
         annotators: List[BaseAnnotator],
         output: Union[BaseOutput, str],
-        prompt: Union[PromptBuilder, str] = None,
         **kwargs,
     ):
         return cls(
             annotators=annotators,
-            prompt=prompt,
             output=output,
+            **kwargs,
         )
 
     @classmethod
@@ -180,7 +182,7 @@ class AnnotatorEnsemble(ABC):
         models: List[component],
         output: Union[BaseOutput, str],
         prompt: Union[PromptBuilder, str],
-        annotation_process: AnnotationProcess = DefaultAnnotation(),
+        annotation_process: AnnotationProcess = DefaultAnnotationProcess(),
         post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         labels: Optional[List[str]] = None,
         **kwargs,
@@ -203,10 +205,11 @@ class AnnotatorEnsemble(ABC):
         annotators = [
             FileAnnotator.from_model(
                 model,
+                prompt=prompt,
                 annotation_process=annotation_process,
                 post_processor=post_processor,
                 labels=labels,
-                output_handler=DummyOutput(),
+                output=DummyOutput(),
             )
             for model in models
         ]
@@ -214,6 +217,5 @@ class AnnotatorEnsemble(ABC):
         return cls(
             annotators=annotators,
             output=output,
-            prompt=prompt,
             **kwargs,
         )

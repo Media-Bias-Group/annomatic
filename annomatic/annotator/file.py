@@ -1,8 +1,12 @@
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
+from haystack.components.builders import PromptBuilder
 
-from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
+from annomatic.annotator.annotation import (
+    AnnotationProcess,
+    DefaultAnnotationProcess,
+)
 from annomatic.annotator.base import LOGGER, BaseAnnotator
 from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
 from annomatic.io.base import BaseOutput
@@ -28,7 +32,8 @@ class FileAnnotator(BaseAnnotator):
         self,
         model,
         output: Union[BaseOutput, str],
-        annotation_process: AnnotationProcess = DefaultAnnotation(),
+        prompt: Optional[PromptBuilder] = None,
+        annotation_process: AnnotationProcess = DefaultAnnotationProcess(),
         post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         labels: Optional[List[str]] = None,
         batch_size: int = 1,  # default to 1 for non-batch models
@@ -36,6 +41,7 @@ class FileAnnotator(BaseAnnotator):
     ):
         super().__init__(
             model=model,
+            prompt=prompt,
             annotation_process=annotation_process,
             batch_size=batch_size,
             post_processor=post_processor,
@@ -173,28 +179,3 @@ class FileAnnotator(BaseAnnotator):
             return annotated_data
         else:
             return None
-
-    @classmethod
-    def from_model(
-        cls,
-        model,
-        annotation_process: AnnotationProcess = DefaultAnnotation(),
-        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
-        batch_size: int = 1,
-        labels: Optional[List[str]] = None,
-        output_handler: Optional[BaseOutput] = None,
-        out_path: Optional[str] = None,
-        out_format: Optional[str] = None,
-        **kwargs,
-    ):
-        return cls(
-            model,
-            annotation_process=annotation_process,
-            post_processor=post_processor,
-            batch_size=batch_size,
-            labels=labels,
-            output_handler=output_handler,
-            out_path=out_path,
-            out_format=out_format,
-            **kwargs,
-        )

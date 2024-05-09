@@ -1,7 +1,7 @@
 import pandas as pd
 from haystack.components.builders import PromptBuilder
 
-from annomatic.annotator.annotation import DefaultAnnotation
+from annomatic.annotator.annotation import DefaultAnnotationProcess
 from annomatic.retriever import SimilarityRetriever
 
 ZERO_SHOT_PROMPT = (
@@ -31,7 +31,7 @@ def test_prompt_fill_zero_shot():
 
     prompt = PromptBuilder(ZERO_SHOT_PROMPT)
 
-    result = DefaultAnnotation().fill_prompt(prompt, df)
+    result = DefaultAnnotationProcess().fill_prompt(prompt, df)
 
     assert result == [
         "Instruction: 'Recent studies suggest that the new technology is revolutionary.'\n"
@@ -60,7 +60,7 @@ def test_prompt_fill_few_shot_dataframe():
 
     prompt = PromptBuilder(FEW_SHOT_PROMPT)
 
-    annotation = DefaultAnnotation()
+    annotation = DefaultAnnotationProcess()
     annotation.context = {"documents": df_examples}
     result = annotation.fill_prompt(prompt, df_data)
 
@@ -100,7 +100,7 @@ def test_prompt_fill_few_shot_retriever():
     )
     prompt = PromptBuilder(FEW_SHOT_PROMPT)
 
-    annotation = DefaultAnnotation()
+    annotation = DefaultAnnotationProcess()
     annotation.context = {"documents": retriever}
     result = annotation.fill_prompt(prompt, df_data)
 
