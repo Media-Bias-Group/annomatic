@@ -11,7 +11,11 @@ from annomatic.annotator.annotation import (
     DefaultAnnotationProcess,
 )
 from annomatic.annotator.base import BaseAnnotator
-from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
+from annomatic.annotator.postprocess import (
+    DefaultPostProcessor,
+    MajorityVote,
+    PostProcessor,
+)
 from annomatic.io.base import BaseOutput
 from annomatic.io.file import create_input_handler, create_output_handler
 
@@ -23,12 +27,16 @@ class AnnotatorEnsemble(ABC):
         self,
         annotators: List[BaseAnnotator],
         output: Union[BaseOutput, str],
+        labels: Optional[List[str]] = None,
+        post_processor: Optional[PostProcessor] = None,
     ):
         if annotators is None:
             annotators = []
         self.annotators = annotators
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
+        self.labels = labels
+        self.post_processor = post_processor
 
         if isinstance(output, str):
             output = create_output_handler(output)
@@ -38,6 +46,17 @@ class AnnotatorEnsemble(ABC):
                 "supported filetype or a BaseOutput",
             )
         self.output = output
+
+    def get_common_labels(self, annotators):
+        labels = set()
+        for obj in annotators:
+            if hasattr(obj, "labels"):
+                labels.add(obj.labels)
+
+        if len(labels) == 1:
+            return labels.pop()
+        else:
+            return None
 
     def set_input(
         self,
@@ -108,12 +127,24 @@ class AnnotatorEnsemble(ABC):
                        as a DataFrame or not.
             **kwargs: Optional arguments to be passed to the annotators.
         """
-        # TODO start result with only the data variable
-
         if data is not None:
             self.data = data
         if data_variable is not None:
             self.data_variable = data_variable
+
+        # if labels and no post_processor make majority vote
+        if not self.post_processor:
+            labels_annotation = self.get_common_labels(self.annotators)
+            self.labels = (
+                labels_annotation
+                if self.labels is None
+                else self.labels
+                if labels_annotation is None
+                else labels_annotation
+                if self.labels == labels_annotation
+                else None
+            )
+            self.post_processor = MajorityVote(labels=self.labels)
 
         # verify inputs
         if self.data is not None and self.data_variable is not None:
@@ -154,7 +185,8 @@ class AnnotatorEnsemble(ABC):
                 del annotator.pipeline
                 torch.cuda.empty_cache()
 
-        # TODO majority vote?
+        if self.post_processor:
+            res = self.post_processor.process(res)
 
         self.output.write(res)
 
@@ -217,5 +249,6 @@ class AnnotatorEnsemble(ABC):
         return cls(
             annotators=annotators,
             output=output,
+            labels=labels,
             **kwargs,
         )
