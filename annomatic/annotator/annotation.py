@@ -18,10 +18,14 @@ def _num_batches(
     """
     Calculates the number of batches and the batch size.
 
-    If self.batch_size is not set, the whole dataset is used as a batch.
+    If batch size is not set, default to batch size of 1.
 
     Args:
-        total_rows: int representing the total number of rows.
+        total_rows: int representing the total number of rows
+        batch_size: int representing a predefined batch size
+
+    Returns:
+        Tuple of number of batches and batch_size as int
     """
     if not batch_size:
         return total_rows, 1
@@ -39,17 +43,17 @@ def to_format(
     data_variable: str,
 ) -> List[Dict]:
     annotated_data = []
-    for i in range((len(responses["replies"]))):
-        response = responses["replies"][i]
-        raw_data = responses.get("meta", responses["replies"][i])
-        message = messages[i] if isinstance(messages, list) else messages
-
+    for i, response in enumerate(responses["replies"]):
         parsed_response = {
             data_variable: batch.iloc[i][data_variable],
             "response": response,
-            "raw_data": raw_data,
-            "query": message,
+            "query": messages[i] if isinstance(messages, list) else messages,
         }
+
+        # Add meta data if available
+        if "meta" in responses:
+            parsed_response["meta"] = responses["meta"]
+
         annotated_data.append(parsed_response)
     return annotated_data
 
@@ -145,7 +149,7 @@ class AnnotationProcess(ABC):
         return messages[0] if len(messages) == 1 else messages
 
 
-class DefaultAnnotation(AnnotationProcess):
+class DefaultAnnotationProcess(AnnotationProcess):
     """
     Default annotation process.
     """

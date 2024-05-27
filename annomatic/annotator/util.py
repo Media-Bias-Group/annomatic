@@ -110,7 +110,7 @@ def find_labels_in_sentence(
 def find_label(
     sentence: str,
     labels: List[str],
-    default_label: str = "?",
+    default: str = "?",
 ) -> str:
     """
     Search for given labels in the sentence and returns it if found. If only
@@ -135,5 +135,5 @@ def find_label(
             non_empty_indices,
         )
         == 1
-        else default_label
+        else default
     )

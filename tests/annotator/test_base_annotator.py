@@ -6,7 +6,7 @@ import pytest
 from haystack.components.builders import PromptBuilder
 
 from annomatic.annotator import FileAnnotator
-from annomatic.annotator.annotation import DefaultAnnotation
+from annomatic.annotator.annotation import DefaultAnnotationProcess
 
 mock_result = {
     "replies": ["NOT BIASED"],
@@ -35,27 +35,25 @@ class BaseAnnotatorTests(unittest.TestCase):
         self.mock_model = MagicMock()
         self.mock_model.run = self.mock_model_predict
 
-    def test_set_data_csv(self):
+    def test_set_input_csv(self):
         annotator = FileAnnotator(
-            out_path="./tests/data/output.csv",
+            output="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
-            out_format="csv",
             model=self.mock_model,
-            annotation_process=DefaultAnnotation(),
+            annotation_process=DefaultAnnotationProcess(),
         )
-        annotator.set_data(
+        annotator.set_input(
             data="./tests/data/input.csv",
             data_variable="input",
         )
         assert isinstance(annotator.data, pd.DataFrame)
 
-    def test_set_data_prompt_matching(self):
+    def test_set_input_prompt_matching(self):
         annotator = FileAnnotator(
-            out_path="./tests/data/output.csv",
+            output="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
-            out_format="csv",
             model=self.mock_model,
-            annotation_process=DefaultAnnotation(),
+            annotation_process=DefaultAnnotationProcess(),
         )
 
         template = (
@@ -70,7 +68,7 @@ class BaseAnnotatorTests(unittest.TestCase):
         df = pd.read_csv(
             "./tests/data/input.csv",
         )
-        annotator.set_data(
+        annotator.set_input(
             data=df,
             data_variable="input",
         )
@@ -79,11 +77,10 @@ class BaseAnnotatorTests(unittest.TestCase):
 
     def test_set_prompt_str(self):
         annotator = FileAnnotator(
-            out_path="./tests/data/output.csv",
+            output="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
-            out_format="csv",
             model=self.mock_model,
-            annotation_process=DefaultAnnotation(),
+            annotation_process=DefaultAnnotationProcess(),
         )
 
         template = (
@@ -99,11 +96,10 @@ class BaseAnnotatorTests(unittest.TestCase):
 
     def test_set_prompt(self):
         annotator = FileAnnotator(
-            out_path="./tests/data/output.csv",
+            output="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
-            out_format="csv",
             model=self.mock_model,
-            annotation_process=DefaultAnnotation(),
+            annotation_process=DefaultAnnotationProcess(),
         )
 
         template = (
@@ -132,11 +128,10 @@ class BaseAnnotatorTests(unittest.TestCase):
         )
 
         annotator = FileAnnotator(
-            out_path="./tests/data/output.csv",
+            output="./tests/data/output.csv",
             labels=["BIASED", "NOT BIASED"],
-            out_format="csv",
             model=self.mock_model,
-            annotation_process=DefaultAnnotation(),
+            annotation_process=DefaultAnnotationProcess(),
         )
 
         annotator.post_processor.labels = ["BIASED", "NOT BIASED"]

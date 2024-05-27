@@ -1,9 +1,14 @@
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
+from haystack.components.builders import PromptBuilder
 
-from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
+from annomatic.annotator.annotation import (
+    AnnotationProcess,
+    DefaultAnnotationProcess,
+)
 from annomatic.annotator.base import LOGGER, BaseAnnotator
+from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
 from annomatic.io.base import BaseOutput
 from annomatic.io.file import create_input_handler, create_output_handler
 
@@ -16,7 +21,7 @@ class FileAnnotator(BaseAnnotator):
         batch_size (int): Size of the batch.
         labels (List[str]): List of labels that should be used
                             for soft parsing.
-        output_handler (BaseOutput): Output handler for the annotated data.
+        output_handler (BaseFileOutput): Output handler for the annotated data.
         out_path (str): Path to the output file.
         out_format (str): Format of the output file. Supported formats are
             'csv' and 'parquet'. Defaults to 'csv'.
@@ -26,34 +31,32 @@ class FileAnnotator(BaseAnnotator):
     def __init__(
         self,
         model,
-        annotation_process: AnnotationProcess = DefaultAnnotation(),
-        output_handler: Optional[BaseOutput] = None,
-        out_path: Optional[str] = None,
-        out_format: Optional[str] = None,
+        output: Union[BaseOutput, str],
+        prompt: Optional[PromptBuilder] = None,
+        annotation_process: AnnotationProcess = DefaultAnnotationProcess(),
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         labels: Optional[List[str]] = None,
         batch_size: int = 1,  # default to 1 for non-batch models
         **kwargs,
     ):
         super().__init__(
             model=model,
+            prompt=prompt,
             annotation_process=annotation_process,
             batch_size=batch_size,
+            post_processor=post_processor,
             labels=labels,
             **kwargs,
         )
 
-        if output_handler:
-            self._output_handler = output_handler
-        elif out_path and out_format:
-            self._output_handler = create_output_handler(
-                path=out_path,
-                type=out_format,
-            )
-        else:
+        if isinstance(output, str):
+            output = create_output_handler(output)
+        elif not isinstance(output, BaseOutput):
             raise ValueError(
-                "Must provide either an output_handler "
-                "or both out_path and out_format.",
+                "Please provide eather a path with a "
+                "supported filetype or a BaseOutput",
             )
+        self.output = output
 
     def set_context(
         self,
@@ -67,11 +70,10 @@ class FileAnnotator(BaseAnnotator):
 
         self.annotation_process.set_context(context)
 
-    def set_data(
+    def set_input(
         self,
         data: Union[pd.DataFrame, str],
-        data_variable: str = "input",
-        in_format: str = "csv",
+        data_variable: Optional[str] = "input",
         sep: str = ",",
     ):
         """
@@ -101,7 +103,6 @@ class FileAnnotator(BaseAnnotator):
         elif isinstance(data, str):
             self.data = create_input_handler(
                 path=data,
-                type=in_format,
             ).read(sep=sep)
         else:
             raise ValueError(
@@ -119,7 +120,7 @@ class FileAnnotator(BaseAnnotator):
         Annotates the input data and writes the annotated data to the
         output CSV file. Also performs some setup if needed.
 
-        This method also accepts the arguments for set_data and set_prompt.
+        This method also accepts the arguments for set_input and set_prompt.
 
 
         Args:
@@ -135,13 +136,14 @@ class FileAnnotator(BaseAnnotator):
         if self.post_processor is None:
             raise ValueError("Post processor is not set!")
 
-        if self._output_handler is None:
+        if self.output is None:
             raise ValueError("Output handler is not set!")
 
         if data is not None:
-            self.set_data(
+            self.set_input(
                 data=data,
-                data_variable=kwargs.get("data_variable", "input"),
+                data_variable=self.data_variable
+                or kwargs.get("data_variable", "input"),
             )
 
         if self._labels is not None:
@@ -171,7 +173,7 @@ class FileAnnotator(BaseAnnotator):
         )
 
         self.post_processor.process(df=annotated_data)
-        self._output_handler.write(annotated_data)
+        self.output.write(annotated_data)
 
         if return_df:
             return annotated_data

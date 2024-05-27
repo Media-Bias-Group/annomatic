@@ -5,8 +5,12 @@ from typing import Any, List, Optional, Union
 import pandas as pd
 from haystack.components.builders import PromptBuilder
 
-from annomatic.annotator.annotation import AnnotationProcess, DefaultAnnotation
+from annomatic.annotator.annotation import (
+    AnnotationProcess,
+    DefaultAnnotationProcess,
+)
 from annomatic.annotator.postprocess import DefaultPostProcessor, PostProcessor
+from annomatic.io.base import BaseOutput
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,10 +23,11 @@ class BaseAnnotator(ABC):
     def __init__(
         self,
         model,
-        annotation_process: AnnotationProcess = DefaultAnnotation(),
+        annotation_process: AnnotationProcess = DefaultAnnotationProcess(),
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
+        prompt: Optional[PromptBuilder] = None,
         batch_size: int = 1,
         labels: Optional[List[str]] = None,
-        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -31,10 +36,18 @@ class BaseAnnotator(ABC):
         self.kwargs = kwargs
         self.data: Optional[pd.DataFrame] = None
         self.data_variable: Optional[str] = None
-        self._prompt: Optional[PromptBuilder] = None
+        self._prompt = prompt
         self.post_processor = post_processor
         self.annotation_process = annotation_process
         self._model = model
+
+    def model_name(self):
+        if hasattr(self._model, "_get_telemetry_data"):
+            return self._model._get_telemetry_data().get("model")
+        elif hasattr(self._model, "model"):
+            return str(self._model.model)
+        else:
+            None
 
     @abstractmethod
     def annotate(
@@ -54,7 +67,7 @@ class BaseAnnotator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def set_data(
+    def set_input(
         self,
         data: Any,
         data_variable: str,
@@ -102,3 +115,26 @@ class BaseAnnotator(ABC):
                 "Invalid input type! "
                 "Only PromptBuilder or str is supported.",
             )
+
+    @classmethod
+    def from_model(
+        cls,
+        model: str,
+        output: Union[BaseOutput, str],
+        prompt: Optional[PromptBuilder] = None,
+        annotation_process: AnnotationProcess = DefaultAnnotationProcess(),
+        post_processor: Optional[PostProcessor] = DefaultPostProcessor(),
+        batch_size: int = 1,
+        labels: Optional[List[str]] = None,
+        **kwargs,
+    ):
+        return cls(
+            model=model,
+            output=output,
+            prompt=prompt,
+            annotation_process=annotation_process,
+            post_processor=post_processor,
+            batch_size=batch_size,
+            labels=labels,
+            **kwargs,
+        )
