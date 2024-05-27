@@ -115,6 +115,10 @@ class MajorityVote(PostProcessor):
         self.unknown_label = unknown_label
 
     def process(self, df: pd.DataFrame):
+        if self.labels is None:
+            LOGGER.info("No Post processing done")
+            return df
+
         label_cols = [
             col for col in df.columns if col.endswith(self.output_col)
         ]
