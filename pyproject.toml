@@ -15,7 +15,22 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache 2.0 License",
 ]
-dependencies = []
+dependencies = ['pandas',
+                'tqdm',
+                'haystack-ai']
+
+[project.optional-dependencies]
+tests = [
+  'pytest',
+]
+huggingface = [
+  'transformers',
+  'torch',
+]
+retriever = [
+  'sentence-transformers',
+  'scikit-learn',
+]
 
 [project.urls]
 Homepage = "https://github.com/Media-Bias-Group/annomatic"
