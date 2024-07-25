@@ -1,44 +1,40 @@
-[tool.poetry]
+[project]
 name = "annomatic"
-version = "0.1.0"
-description = ""
-authors = ["Christoph Mandl <mandl23@ads.uni-passau.de>"]
+version = "0.1"
+description = ''
 readme = "README.md"
+requires-python = ">=3.9"
+keywords = []
+authors = [
+  { name="Christoph Mandl", email="c.mandl@media-bias-research.org" },
+  { name="Tomáš Horych", email="t.horych@Media-bias-research.org" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+]
+dependencies = ['pandas',
+                'tqdm',
+                'haystack-ai']
 
-[tool.poetry.dependencies]
-python = ">=3.9,<3.11"
-pandas = "^2.2.1"
-tqdm = "~4.66.2"
-haystack-ai = "^2.0.0"
+[project.optional-dependencies]
+tests = [
+  'pytest',
+]
+huggingface = [
+  'transformers',
+  'torch',
+]
+retriever = [
+  'sentence-transformers',
+  'scikit-learn',
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.1.1"
-pre-commit = "^3.7.0"
-
-# HuggingFace
-[tool.poetry.group.huggingface]
-optional = true
-
-[tool.poetry.group.huggingface.dependencies]
-transformers = "^4.34.0"
-
-
-# Retriever (for ICL)
-[tool.poetry.group.retriever]
-optional = true
-
-[tool.poetry.group.retriever.dependencies]
-sentence-transformers = "^2.6.0"
-scikit-learn = "^1.4.0"
-
-# config for pre-commit
-[tool.black]
-line-length = 79
-
-[tool.isort]
-profile = "black"
-line_length = 79
+[project.urls]
+Homepage = "https://github.com/Media-Bias-Group/annomatic"
+Issues = "https://github.com/Media-Bias-Group/annomatic/issues"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
