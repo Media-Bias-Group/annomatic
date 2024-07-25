@@ -4,7 +4,6 @@ version = "0.1"
 description = ''
 readme = "README.md"
 requires-python = ">=3.9"
-license = "Apache 2.0 License"
 keywords = []
 authors = [
   { name="Christoph Mandl", email="c.mandl@media-bias-research.org" },
@@ -13,7 +12,7 @@ authors = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache 2.0 License",
+    "License :: OSI Approved :: Apache Software License",
 ]
 dependencies = ['pandas',
                 'tqdm',
