@@ -84,10 +84,10 @@ class BaseAnnotatorTests(unittest.TestCase):
         )
 
         template = (
-            "Instruction: '{input}'"
+            "Instruction: '{{input}}'"
             "\n\n"
             "Classify the sentence above as BIASED "
-            "or NOT BIASED or as {extra}."
+            "or NOT BIASED or as {{extra}}."
             "\n\n"
             "Output: "
         )
