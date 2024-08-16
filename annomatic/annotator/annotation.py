@@ -157,9 +157,11 @@ class DefaultAnnotationProcess(AnnotationProcess):
     def __init__(
         self,
         labels: Optional[List[str]] = None,
+        intermediate_save: Optional[float] = None,
     ):
         super().__init__(labels=labels)
         self.context: Optional[dict] = None
+        self.intermediate_save = intermediate_save
 
     def annotate(
         self,
@@ -190,6 +192,20 @@ class DefaultAnnotationProcess(AnnotationProcess):
             )
             if entries:
                 output_data.extend(entries)
+
+            if (
+                self.intermediate_save
+                and idx % int(self.intermediate_save * num_batches) == 0
+            ):
+                try:
+                    temp = pd.DataFrame(output_data)
+                    location = f"./temp_{len(entries)}.parquet"
+                    temp.to_parquet(location, index=False)
+                    LOGGER.info(f"Intermediate saved at {location}")
+                except Exception as df_temp:
+                    LOGGER.error(
+                        f"intermediate save didn't work: " f"{str(df_temp)}",
+                    )
 
         # handle rest of the data
         if num_batches * batch_size < total_rows:
