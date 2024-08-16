@@ -180,6 +180,11 @@ class DefaultAnnotationProcess(AnnotationProcess):
         total_rows = data.shape[0]
         num_batches, batch_size = _num_batches(total_rows, batch_size)
 
+        if self.intermediate_save:
+            save_interval = max(1, int(num_batches * self.intermediate_save))
+        else:
+            save_interval = None
+
         LOGGER.info(f"Starting Annotation of {total_rows}")
         for idx in tqdm(range(num_batches)):
             batch = data.iloc[idx * batch_size : (idx + 1) * batch_size]
@@ -193,13 +198,10 @@ class DefaultAnnotationProcess(AnnotationProcess):
             if entries:
                 output_data.extend(entries)
 
-            if (
-                self.intermediate_save
-                and idx % int(self.intermediate_save * num_batches) == 0
-            ):
+            if save_interval and (idx + 1) % save_interval == 0:
                 try:
                     temp = pd.DataFrame(output_data)
-                    location = f"./temp_{len(entries)}.parquet"
+                    location = f"./temp_{len(output_data)}.parquet"
                     temp.to_parquet(location, index=False)
                     LOGGER.info(f"Intermediate saved at {location}")
                 except Exception as df_temp:
