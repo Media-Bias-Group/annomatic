@@ -182,7 +182,8 @@ class DefaultAnnotationProcess(AnnotationProcess):
         num_batches, batch_size = _num_batches(total_rows, batch_size)
 
         if self.intermediate_save:
-            save_interval = max(1, int(num_batches * self.intermediate_save))
+            save_interval = max(2, int(num_batches * self.intermediate_save))
+            print(f"save_interval: {save_interval}")
         else:
             save_interval = None
 
@@ -198,15 +199,16 @@ class DefaultAnnotationProcess(AnnotationProcess):
             )
             if entries:
                 output_data.extend(entries)
+            else:
+                print("no entries added.")
 
             if save_interval and (idx + 1) % save_interval == 0:
                 try:
                     temp = pd.DataFrame(output_data)
-                    location = f"./temp_{len(output_data)}.parquet"
+                    location = "temp.parquet"
                     temp.to_parquet(location, index=False)
-                    LOGGER.info(f"Intermediate saved at {location}")
                 except Exception as df_temp:
-                    LOGGER.error(
+                    print(
                         f"intermediate save didn't work: " f"{str(df_temp)}",
                     )
 
@@ -222,7 +224,7 @@ class DefaultAnnotationProcess(AnnotationProcess):
         try:
             return pd.DataFrame(output_data)
         except Exception as df_error:
-            LOGGER.error(f"Output dataframe error: {str(df_error)}")
+            print(f"Output dataframe error: {str(df_error)}")
             return pd.DataFrame()
 
     def _annotate_batch(
@@ -263,5 +265,5 @@ class DefaultAnnotationProcess(AnnotationProcess):
             return to_format(batch, messages, responses, data_variable)
 
         except Exception as exception:
-            LOGGER.error(f"Prediction error: {str(exception)}")
+            print(f"Prediction error: {str(exception)}")
             return []
