@@ -130,6 +130,7 @@ class AnnotationProcess(ABC):
         self,
         prompt: PromptBuilder,
         batch: pd.DataFrame,
+        **kwargs,
     ) -> Union[List[str], str]:
         """
         Creates the prompt passed to the model.
@@ -142,7 +143,7 @@ class AnnotationProcess(ABC):
             raise ValueError("Prompt is not set!")
 
         messages = [
-            prompt.run(**row.to_dict(), **self.build_context(row))["prompt"]
+            prompt.run(**row.to_dict(), **kwargs, **self.build_context(row))["prompt"]
             for _, row in batch.iterrows()
         ]
 
@@ -255,6 +256,7 @@ class DefaultAnnotationProcess(AnnotationProcess):
         messages = self.fill_prompt(
             prompt=prompt,
             batch=batch,
+            **kwargs,
         )
         try:
             responses = model.run(messages)
