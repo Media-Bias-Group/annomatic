@@ -233,11 +233,13 @@ class DefaultAnnotationProcess(AnnotationProcess):
         self,
         labels: Optional[List[str]] = None,
         intermediate_save: Optional[float] = None,
+        save_location: Optional[str] = None,
         generation_kwargs: Optional[Dict] = None,
     ):
         super().__init__(labels=labels)
         self.context: Optional[Dict] = None
         self.intermediate_save = intermediate_save
+        self.save_location = save_location or "temp.parquet"
         self.generation_kwargs = generation_kwargs or {}
 
     def annotate(
@@ -281,8 +283,7 @@ class DefaultAnnotationProcess(AnnotationProcess):
             if save_interval and (idx + 1) % save_interval == 0:
                 try:
                     temp = pd.DataFrame(output_data)
-                    location = "temp.parquet"
-                    temp.to_parquet(location, index=False)
+                    temp.to_parquet(self.save_location, index=False)
                 except Exception as df_temp:
                     print(
                         f"intermediate save didn't work: " f"{str(df_temp)}",
