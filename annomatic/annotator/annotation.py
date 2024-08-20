@@ -233,10 +233,12 @@ class DefaultAnnotationProcess(AnnotationProcess):
         self,
         labels: Optional[List[str]] = None,
         intermediate_save: Optional[float] = None,
+        generation_kwargs: Optional[Dict] = None,
     ):
         super().__init__(labels=labels)
-        self.context: Optional[dict] = None
+        self.context: Optional[Dict] = None
         self.intermediate_save = intermediate_save
+        self.generation_kwargs = generation_kwargs or {}
 
     def annotate(
         self,
@@ -339,7 +341,7 @@ class DefaultAnnotationProcess(AnnotationProcess):
             if hasattr(model, "run"):
                 responses = model.run(messages)
             else:
-                responses = model(messages)
+                responses = model(messages, **self.generation_kwargs)
 
             return to_format(batch, messages, responses, data_variable)
 
