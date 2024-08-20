@@ -36,26 +36,96 @@ def _num_batches(
     return total_rows // batch_size, batch_size
 
 
-def to_format(
+def extract_meta_data(responses: Dict) -> Dict:
+    """Extract meta data from responses if available."""
+    return {"meta": responses["meta"]} if "meta" in responses else {}
+
+
+def format_response(
+    data_variable: str,
+    message: str,
+    response: str,
+    meta: Dict,
+) -> Dict:
+    """Format a single response with the associated query and meta data."""
+    formatted_response = {
+        data_variable: message,
+        "response": response,
+        "query": message,
+    }
+    if meta:
+        formatted_response.update(meta)
+    return formatted_response
+
+
+def parse_haystack_generator_response(
     batch: pd.DataFrame,
     messages: Union[List[str], str],
     responses: Dict,
     data_variable: str,
 ) -> List[Dict]:
-    annotated_data = []
-    for i, response in enumerate(responses["replies"]):
-        parsed_response = {
-            data_variable: batch.iloc[i][data_variable],
-            "response": response,
-            "query": messages[i] if isinstance(messages, list) else messages,
-        }
+    """Parse responses under the 'replies' key."""
+    meta = extract_meta_data(responses)
+    return [
+        format_response(
+            batch.iloc[i][data_variable],
+            messages[i] if isinstance(messages, list) else messages,
+            response,
+            meta,
+        )
+        for i, response in enumerate(responses["replies"])
+    ]
 
-        # Add meta data if available
-        if "meta" in responses:
-            parsed_response["meta"] = responses["meta"]
 
-        annotated_data.append(parsed_response)
-    return annotated_data
+def parse_transformers_pipeline_response(
+    batch: pd.DataFrame,
+    messages: Union[List[str], str],
+    responses: List[List[Dict]],
+    data_variable: str,
+) -> List[Dict]:
+    """Parse responses with 'generated_text' key."""
+    meta = extract_meta_data(responses[0][0])
+    return [
+        format_response(
+            batch.iloc[i][data_variable],
+            messages[i] if isinstance(messages, list) else messages,
+            response[0]["generated_text"],
+            meta,
+        )
+        for i, response in enumerate(responses)
+    ]
+
+
+def to_format(
+    batch: pd.DataFrame,
+    messages: Union[List[str], str],
+    responses: Union[Dict, List[List[Dict]]],
+    data_variable: str,
+) -> List[Dict]:
+    """Convert responses into a formatted list of dictionaries."""
+    if "replies" in responses:
+        return parse_haystack_generator_response(
+            batch,
+            messages,
+            responses,  # type: ignore
+            data_variable,
+        )
+
+    if all(
+        isinstance(inner_list, list)
+        and all("generated_text" in item for item in inner_list)
+        for inner_list in responses
+    ):
+        return parse_transformers_pipeline_response(  # type: ignore
+            batch,
+            messages,
+            responses,  # type: ignore
+            data_variable,
+        )
+
+    raise NotImplementedError(
+        f"the format of the response is not known: {responses[0]}",
+    )
 
 
 class AnnotationProcess(ABC):
@@ -143,7 +213,11 @@ class AnnotationProcess(ABC):
             raise ValueError("Prompt is not set!")
 
         messages = [
-            prompt.run(**row.to_dict(), **kwargs, **self.build_context(row))["prompt"]
+            prompt.run(
+                **row.to_dict(),
+                **kwargs,
+                **self.build_context(row),
+            )["prompt"]
             for _, row in batch.iterrows()
         ]
 
@@ -260,8 +334,13 @@ class DefaultAnnotationProcess(AnnotationProcess):
             batch=batch,
             **kwargs,
         )
+
         try:
-            responses = model.run(messages)
+            if hasattr(model, "run"):
+                responses = model.run(messages)
+            else:
+                responses = model(messages)
+
             return to_format(batch, messages, responses, data_variable)
 
         except Exception as exception:
