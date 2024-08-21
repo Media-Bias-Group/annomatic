@@ -42,16 +42,17 @@ def extract_meta_data(responses: Dict) -> Dict:
 
 
 def format_response(
+    data: str,
     data_variable: str,
-    message: str,
+    query: str,
     response: str,
     meta: Dict,
 ) -> Dict:
     """Format a single response with the associated query and meta data."""
     formatted_response = {
-        data_variable: message,
+        data_variable: data,
         "response": response,
-        "query": message,
+        "query": query,
     }
     if meta:
         formatted_response.update(meta)
@@ -60,7 +61,7 @@ def format_response(
 
 def parse_haystack_generator_response(
     batch: pd.DataFrame,
-    messages: Union[List[str], str],
+    query: Union[List[str], str],
     responses: Dict,
     data_variable: str,
 ) -> List[Dict]:
@@ -68,10 +69,11 @@ def parse_haystack_generator_response(
     meta = extract_meta_data(responses)
     return [
         format_response(
-            batch.iloc[i][data_variable],
-            messages[i] if isinstance(messages, list) else messages,
-            response,
-            meta,
+            data=batch.iloc[i][data_variable],
+            data_variable=data_variable,
+            query=query[i] if isinstance(query, list) else query,
+            response=response,
+            meta=meta,
         )
         for i, response in enumerate(responses["replies"])
     ]
@@ -79,7 +81,7 @@ def parse_haystack_generator_response(
 
 def parse_transformers_pipeline_response(
     batch: pd.DataFrame,
-    messages: Union[List[str], str],
+    query: Union[List[str], str],
     responses: List[List[Dict]],
     data_variable: str,
 ) -> List[Dict]:
@@ -87,10 +89,11 @@ def parse_transformers_pipeline_response(
     meta = extract_meta_data(responses[0][0])
     return [
         format_response(
-            batch.iloc[i][data_variable],
-            messages[i] if isinstance(messages, list) else messages,
-            response[0]["generated_text"],
-            meta,
+            data=batch.iloc[i][data_variable],
+            data_variable=data_variable,
+            query=query[i] if isinstance(query, list) else query,
+            response=response[0]["generated_text"],
+            meta=meta,
         )
         for i, response in enumerate(responses)
     ]
@@ -98,7 +101,7 @@ def parse_transformers_pipeline_response(
 
 def to_format(
     batch: pd.DataFrame,
-    messages: Union[List[str], str],
+    query: Union[List[str], str],
     responses: Union[Dict, List[List[Dict]]],
     data_variable: str,
 ) -> List[Dict]:
@@ -106,7 +109,7 @@ def to_format(
     if "replies" in responses:
         return parse_haystack_generator_response(
             batch,
-            messages,
+            query,
             responses,  # type: ignore
             data_variable,
         )
@@ -118,7 +121,7 @@ def to_format(
     ):
         return parse_transformers_pipeline_response(  # type: ignore
             batch,
-            messages,
+            query,
             responses,  # type: ignore
             data_variable,
         )
@@ -212,7 +215,7 @@ class AnnotationProcess(ABC):
         if prompt is None:
             raise ValueError("Prompt is not set!")
 
-        messages = [
+        query = [
             prompt.run(
                 **row.to_dict(),
                 **kwargs,
@@ -221,7 +224,7 @@ class AnnotationProcess(ABC):
             for _, row in batch.iterrows()
         ]
 
-        return messages[0] if len(messages) == 1 else messages
+        return query[0] if len(query) == 1 else query
 
 
 class DefaultAnnotationProcess(AnnotationProcess):
@@ -332,7 +335,7 @@ class DefaultAnnotationProcess(AnnotationProcess):
                 "Model or prompt is not set! ",
             )
 
-        messages = self.fill_prompt(
+        query = self.fill_prompt(
             prompt=prompt,
             batch=batch,
             **kwargs,
@@ -340,11 +343,11 @@ class DefaultAnnotationProcess(AnnotationProcess):
 
         try:
             if hasattr(model, "run"):
-                responses = model.run(messages)
+                responses = model.run(query)
             else:
-                responses = model(messages, **self.generation_kwargs)
+                responses = model(query, **self.generation_kwargs)
 
-            return to_format(batch, messages, responses, data_variable)
+            return to_format(batch, query, responses, data_variable)
 
         except Exception as exception:
             print(f"Prediction error: {str(exception)}")
