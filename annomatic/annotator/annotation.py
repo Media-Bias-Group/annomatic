@@ -108,10 +108,10 @@ def to_format(
     """Convert responses into a formatted list of dictionaries."""
     if "replies" in responses:
         return parse_haystack_generator_response(
-            batch,
-            query,
-            responses,  # type: ignore
-            data_variable,
+            batch=batch,
+            query=query,
+            responses=responses,  # type: ignore
+            data_variable=data_variable,
         )
 
     if all(
@@ -120,10 +120,10 @@ def to_format(
         for inner_list in responses
     ):
         return parse_transformers_pipeline_response(  # type: ignore
-            batch,
-            query,
-            responses,  # type: ignore
-            data_variable,
+            batch=batch,
+            query=query,
+            responses=responses,  # type: ignore
+            data_variable=data_variable,
         )
 
     raise NotImplementedError(
@@ -347,7 +347,12 @@ class DefaultAnnotationProcess(AnnotationProcess):
             else:
                 responses = model(query, **self.generation_kwargs)
 
-            return to_format(batch, query, responses, data_variable)
+            return to_format(
+                batch=batch,
+                query=query,
+                responses=responses,
+                data_variable=data_variable,
+            )
 
         except Exception as exception:
             print(f"Prediction error: {str(exception)}")
