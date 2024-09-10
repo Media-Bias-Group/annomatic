@@ -22,45 +22,27 @@ for their projects.
 - Automatic text annotation via Language Models.
 - Streamlined annotation pipeline.
 - Easy-to-use interface.
-- Highly customizable annotation settings.
+- Customizable annotation settings.
 - Supports a wide range of language models.
 
 ## Installation
 
-To get started with Annomatic, follow these installation steps:
+The current recommended way to install annomatic is from source.
 
-1. Clone the Annomatic repository to your local machine:
-
-   ```bash
-   git clone https://github.com/mandlc/annomatic.git
-
-2. Install dependencies
-
-   To install the required dependencies, run the following command:
+1. Source
 
    ```bash
-   pip install -r requirements.txt
+   git clone https://github.com/Media-Bias-Group/annomatic
+   cd annomatic
+   python -m pip install -e .
    ```
-   or
-   ```bash
-   poetry install
-   ```
-
-   Annomatic relies on Haystack 2.0 for its core functionality. Therefore,
-   certain models rely on extra dependencies. The following optional
-    dependencies are required for the following models:
-
-    1. HuggingFace
-    ```bash
-    poetry install --with huggingface
-    ```
-
 A list for all available LLMs can be found in the [Haystack docs](https://docs.haystack.deepset.ai/docs/generators)
 with additional installation information.
 
 ## Usage
    You can find examples of how to use Annomatic in the [Examples](examples)
    directory.
+
 ## Contributing
 
 ## License

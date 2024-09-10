@@ -1,13 +1,9 @@
-pandas~=2.2.1
-tqdm~=4.66.2
-haystack-ai ~=2.0.0
-
-# Requirements for development
-pytest~=8.1.1
-pre-commit~=3.7.0
-# Requirements for HuggingFace (optional)
-torch>=1.11.0
-transformers~=4.34.0
-# Requirements for retrievers (optional)
-sentence-transformers~=2.6.0
-scikit-learn~=1.4.0
+pandas
+tqdm
+haystack-ai
+pytest
+pre-commit
+torch>=1.11.03.7.0
+transformers>=4.34.0
+sentence-transformers>=2.6.0
+scikit-learn>=1.4.0
