@@ -11,6 +11,16 @@ from annomatic.retriever.base import Retriever
 LOGGER = logging.getLogger(__name__)
 
 
+def _predict(model, query, **kwargs) -> Union[Dict, List[List[Dict]]]:
+    """
+    Runs the prediction depending on the library used for the prediction.
+    """
+    if hasattr(model, "run"):
+        return model.run(query)
+    else:
+        return model(query, **kwargs)
+
+
 def _num_batches(
     total_rows: int,
     batch_size: int,
@@ -59,7 +69,7 @@ def format_response(
     return formatted_response
 
 
-def parse_haystack_generator_response(
+def parse_haystack_response(
     batch: pd.DataFrame,
     query: Union[List[str], str],
     responses: Dict,
@@ -79,13 +89,37 @@ def parse_haystack_generator_response(
     ]
 
 
-def parse_transformers_pipeline_response(
+def parse_text2text_response(
+    batch: pd.DataFrame,
+    query: Union[List[str], str],
+    responses: List[Dict],
+    data_variable: str,
+) -> List[Dict]:
+    """Parse responses with a model of the transformers library with the
+    'text2text-generation' task.
+    """
+    meta = extract_meta_data(responses[0])
+    return [
+        format_response(
+            data=batch.iloc[i][data_variable],
+            data_variable=data_variable,
+            query=query[i] if isinstance(query, list) else query,
+            response=response["generated_text"],
+            meta=meta,
+        )
+        for i, response in enumerate(responses)
+    ]
+
+
+def parse_textgen_response(
     batch: pd.DataFrame,
     query: Union[List[str], str],
     responses: List[List[Dict]],
     data_variable: str,
 ) -> List[Dict]:
-    """Parse responses with 'generated_text' key."""
+    """Parse responses with a model of the transformers library with the
+    'text2-generation' task.
+    """
     meta = extract_meta_data(responses[0][0])
     return [
         format_response(
@@ -100,6 +134,7 @@ def parse_transformers_pipeline_response(
 
 
 def to_format(
+    model: Any,
     batch: pd.DataFrame,
     query: Union[List[str], str],
     responses: Union[Dict, List[List[Dict]]],
@@ -107,24 +142,28 @@ def to_format(
 ) -> List[Dict]:
     """Convert responses into a formatted list of dictionaries."""
     if "replies" in responses:
-        return parse_haystack_generator_response(
+        return parse_haystack_response(
             batch=batch,
             query=query,
             responses=responses,  # type: ignore
             data_variable=data_variable,
         )
 
-    if all(
-        isinstance(inner_list, list)
-        and all("generated_text" in item for item in inner_list)
-        for inner_list in responses
-    ):
-        return parse_transformers_pipeline_response(  # type: ignore
-            batch=batch,
-            query=query,
-            responses=responses,  # type: ignore
-            data_variable=data_variable,
-        )
+    elif hasattr(model, "task"):
+        if model.task == "text-generation":
+            return parse_textgen_response(  # type: ignore
+                batch=batch,
+                query=query,
+                responses=responses,  # type: ignore
+                data_variable=data_variable,
+            )
+        elif model.task == "text2text-generation":
+            return parse_text2text_response(  # type: ignore
+                batch=batch,
+                query=query,
+                responses=responses,  # type: ignore
+                data_variable=data_variable,
+            )
 
     raise NotImplementedError(
         f"the format of the response is not known: {responses[0]}",
@@ -318,13 +357,16 @@ class DefaultAnnotationProcess(AnnotationProcess):
             **kwargs,
         )
         try:
-            responses = model.run(query)
-            return to_format(
-                batch=batch,
-                query=query,
-                responses=responses,
-                data_variable=data_variable,
-            )
+            responses = _predict(model=model, query=query)
+
         except Exception as exception:
             LOGGER.error(f"Prediction error: {str(exception)}")
             return []
+
+        return to_format(
+            model=model,
+            batch=batch,
+            query=query,
+            responses=responses,
+            data_variable=data_variable,
+        )
