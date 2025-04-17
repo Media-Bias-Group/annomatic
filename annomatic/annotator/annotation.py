@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from haystack.components.builders import PromptBuilder
@@ -9,6 +9,16 @@ from tqdm import tqdm
 from annomatic.retriever.base import Retriever
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _predict(model, query, **kwargs) -> Union[Dict, List[List[Dict]]]:
+    """
+    Runs the prediction depending on the library used for the prediction.
+    """
+    if hasattr(model, "run"):
+        return model.run(query)
+    else:
+        return model(query, **kwargs)
 
 
 def _num_batches(
@@ -36,26 +46,128 @@ def _num_batches(
     return total_rows // batch_size, batch_size
 
 
-def to_format(
+def extract_meta_data(responses: Dict) -> Dict:
+    """Extract meta data from responses if available."""
+    return {"meta": responses["meta"]} if "meta" in responses else {}
+
+
+def format_response(
+    data: str,
+    data_variable: str,
+    query: str,
+    response: str,
+    meta: Dict,
+) -> Dict:
+    """Format a single response with the associated query and meta data."""
+    formatted_response = {
+        data_variable: data,
+        "response": response,
+        "query": query,
+    }
+    if meta:
+        formatted_response.update(meta)
+    return formatted_response
+
+
+def parse_haystack_response(
     batch: pd.DataFrame,
-    messages: Union[List[str], str],
+    query: Union[List[str], str],
     responses: Dict,
     data_variable: str,
 ) -> List[Dict]:
-    annotated_data = []
-    for i, response in enumerate(responses["replies"]):
-        parsed_response = {
-            data_variable: batch.iloc[i][data_variable],
-            "response": response,
-            "query": messages[i] if isinstance(messages, list) else messages,
-        }
+    """Parse responses under the 'replies' key."""
+    meta = extract_meta_data(responses)
+    return [
+        format_response(
+            data=batch.iloc[i][data_variable],
+            data_variable=data_variable,
+            query=query[i] if isinstance(query, list) else query,
+            response=response,
+            meta=meta,
+        )
+        for i, response in enumerate(responses["replies"])
+    ]
 
-        # Add meta data if available
-        if "meta" in responses:
-            parsed_response["meta"] = responses["meta"]
 
-        annotated_data.append(parsed_response)
-    return annotated_data
+def parse_text2text_response(
+    batch: pd.DataFrame,
+    query: Union[List[str], str],
+    responses: List[Dict],
+    data_variable: str,
+) -> List[Dict]:
+    """Parse responses with a model of the transformers library with the
+    'text2text-generation' task.
+    """
+    meta = extract_meta_data(responses[0])
+    return [
+        format_response(
+            data=batch.iloc[i][data_variable],
+            data_variable=data_variable,
+            query=query[i] if isinstance(query, list) else query,
+            response=response["generated_text"],
+            meta=meta,
+        )
+        for i, response in enumerate(responses)
+    ]
+
+
+def parse_textgen_response(
+    batch: pd.DataFrame,
+    query: Union[List[str], str],
+    responses: List[List[Dict]],
+    data_variable: str,
+) -> List[Dict]:
+    """Parse responses with a model of the transformers library with the
+    'text2-generation' task.
+    """
+    meta = extract_meta_data(responses[0][0])
+    return [
+        format_response(
+            data=batch.iloc[i][data_variable],
+            data_variable=data_variable,
+            query=query[i] if isinstance(query, list) else query,
+            response=response[0]["generated_text"],
+            meta=meta,
+        )
+        for i, response in enumerate(responses)
+    ]
+
+
+def to_format(
+    model: Any,
+    batch: pd.DataFrame,
+    query: Union[List[str], str],
+    responses: Union[Dict, List[List[Dict]]],
+    data_variable: str,
+) -> List[Dict]:
+    """Convert responses into a formatted list of dictionaries."""
+    if "replies" in responses:
+        return parse_haystack_response(
+            batch=batch,
+            query=query,
+            responses=responses,  # type: ignore
+            data_variable=data_variable,
+        )
+
+    elif hasattr(model, "task"):
+        if model.task == "text-generation":
+            return parse_textgen_response(  # type: ignore
+                batch=batch,
+                query=query,
+                responses=responses,  # type: ignore
+                data_variable=data_variable,
+            )
+        elif model.task == "text2text-generation":
+            return parse_text2text_response(  # type: ignore
+                batch=batch,
+                query=query,
+                responses=responses,  # type: ignore
+                data_variable=data_variable,
+            )
+
+    raise NotImplementedError(
+        f"the format of the response is not known: {responses[0]}",
+    )
 
 
 class AnnotationProcess(ABC):
@@ -142,12 +254,16 @@ class AnnotationProcess(ABC):
         if prompt is None:
             raise ValueError("Prompt is not set!")
 
-        messages = [
-            prompt.run(**row.to_dict(), **kwargs, **self.build_context(row))["prompt"]
+        query = [
+            prompt.run(
+                **row.to_dict(),
+                **kwargs,
+                **self.build_context(row),
+            )["prompt"]
             for _, row in batch.iterrows()
         ]
 
-        return messages[0] if len(messages) == 1 else messages
+        return query[0] if len(query) == 1 else query
 
 
 class DefaultAnnotationProcess(AnnotationProcess):
@@ -164,7 +280,7 @@ class DefaultAnnotationProcess(AnnotationProcess):
 
     def annotate(
         self,
-        model,
+        model: Any,
         prompt: PromptBuilder,
         data: pd.DataFrame,
         data_variable: str,
@@ -235,15 +351,22 @@ class DefaultAnnotationProcess(AnnotationProcess):
                 "Model or prompt is not set! ",
             )
 
-        messages = self.fill_prompt(
+        query = self.fill_prompt(
             prompt=prompt,
             batch=batch,
             **kwargs,
         )
         try:
-            responses = model.run(messages)
-            return to_format(batch, messages, responses, data_variable)
+            responses = _predict(model=model, query=query)
 
         except Exception as exception:
             LOGGER.error(f"Prediction error: {str(exception)}")
             return []
+
+        return to_format(
+            model=model,
+            batch=batch,
+            query=query,
+            responses=responses,
+            data_variable=data_variable,
+        )
